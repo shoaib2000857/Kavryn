@@ -1,0 +1,327 @@
+{
+  "$defs": {
+    "ActionsPolicy": {
+      "additionalProperties": false,
+      "description": "Action-type disposition buckets: automatic, approval-gated, denied.\n\nAn action type listed in more than one bucket is ambiguous about its\nown authorization tier, which docs/CONTROL_PLANE.md's authorization\ntuple treats as a denial condition (\"An omitted or ambiguous field\ncauses denial.\"); this is rejected at construction time.",
+      "properties": {
+        "approval": {
+          "default": [],
+          "items": {
+            "maxLength": 128,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+            "type": "string"
+          },
+          "title": "Approval",
+          "type": "array"
+        },
+        "auto": {
+          "default": [],
+          "items": {
+            "maxLength": 128,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+            "type": "string"
+          },
+          "title": "Auto",
+          "type": "array"
+        },
+        "deny": {
+          "default": [],
+          "items": {
+            "maxLength": 128,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+            "type": "string"
+          },
+          "title": "Deny",
+          "type": "array"
+        }
+      },
+      "title": "ActionsPolicy",
+      "type": "object"
+    },
+    "Authorization": {
+      "additionalProperties": false,
+      "description": "Owner attestation and expiry for the case's authorization to act.",
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "owner_attestation_required": {
+          "default": true,
+          "title": "Owner Attestation Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "expires_at"
+      ],
+      "title": "Authorization",
+      "type": "object"
+    },
+    "Budgets": {
+      "additionalProperties": false,
+      "description": "Hard resource limits for the case (docs/CONTROL_PLANE.md).",
+      "properties": {
+        "model_tokens": {
+          "exclusiveMinimum": 0,
+          "title": "Model Tokens",
+          "type": "integer"
+        },
+        "spend_usd": {
+          "minimum": 0,
+          "title": "Spend Usd",
+          "type": "number"
+        },
+        "tool_calls": {
+          "exclusiveMinimum": 0,
+          "title": "Tool Calls",
+          "type": "integer"
+        },
+        "wall_time_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Wall Time Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "tool_calls",
+        "model_tokens",
+        "wall_time_seconds",
+        "spend_usd"
+      ],
+      "title": "Budgets",
+      "type": "object"
+    },
+    "FilesystemPolicy": {
+      "additionalProperties": false,
+      "description": "Filesystem access, expressed as explicit read/write URI prefixes.",
+      "properties": {
+        "read": {
+          "default": [],
+          "items": {
+            "maxLength": 2048,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+            "type": "string"
+          },
+          "title": "Read",
+          "type": "array"
+        },
+        "write": {
+          "default": [],
+          "items": {
+            "maxLength": 2048,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+            "type": "string"
+          },
+          "title": "Write",
+          "type": "array"
+        }
+      },
+      "title": "FilesystemPolicy",
+      "type": "object"
+    },
+    "NetworkAllowRule": {
+      "additionalProperties": false,
+      "description": "A single pinned network exception to the default-deny egress rule.",
+      "properties": {
+        "destination": {
+          "maxLength": 253,
+          "minLength": 1,
+          "title": "Destination",
+          "type": "string"
+        },
+        "ports": {
+          "items": {
+            "maximum": 65535,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "minItems": 1,
+          "title": "Ports",
+          "type": "array"
+        }
+      },
+      "required": [
+        "destination",
+        "ports"
+      ],
+      "title": "NetworkAllowRule",
+      "type": "object"
+    },
+    "NetworkPolicy": {
+      "additionalProperties": false,
+      "description": "Network policy. ``default`` is fixed to ``deny`` (SR-NET-001).\n\nFixing the field to the literal ``\"deny\"`` makes default-deny a\nstructural invariant of the schema rather than a convention that a\nscope document could opt out of.",
+      "properties": {
+        "allow": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/NetworkAllowRule"
+          },
+          "title": "Allow",
+          "type": "array"
+        },
+        "default": {
+          "const": "deny",
+          "default": "deny",
+          "title": "Default",
+          "type": "string"
+        }
+      },
+      "title": "NetworkPolicy",
+      "type": "object"
+    },
+    "RepositoryTarget": {
+      "additionalProperties": false,
+      "description": "An in-scope repository, pinned to an exact commit.",
+      "properties": {
+        "commit": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Commit",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "commit"
+      ],
+      "title": "RepositoryTarget",
+      "type": "object"
+    },
+    "ServiceTarget": {
+      "additionalProperties": false,
+      "description": "An in-scope service, bound to a case-specific network.",
+      "properties": {
+        "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "network": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Network",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "network"
+      ],
+      "title": "ServiceTarget",
+      "type": "object"
+    },
+    "Targets": {
+      "additionalProperties": false,
+      "description": "The explicit, enumerable set of in-scope repositories and services.\n\nFR-SCP-003 requires that a target which cannot be resolved to an\nexplicit scope object is rejected; an empty ``Targets`` would mean\nnothing is in scope, so at least one target must be declared.",
+      "properties": {
+        "repositories": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/RepositoryTarget"
+          },
+          "title": "Repositories",
+          "type": "array"
+        },
+        "services": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ServiceTarget"
+          },
+          "title": "Services",
+          "type": "array"
+        }
+      },
+      "title": "Targets",
+      "type": "object"
+    },
+    "ToolsPolicy": {
+      "additionalProperties": false,
+      "description": "The allow-list of typed tool adapters usable within this case.",
+      "properties": {
+        "allow": {
+          "default": [],
+          "items": {
+            "maxLength": 128,
+            "minLength": 3,
+            "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+            "type": "string"
+          },
+          "title": "Allow",
+          "type": "array"
+        }
+      },
+      "title": "ToolsPolicy",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The complete, versioned scope policy for one case.\n\nA case must never be actioned without one of these existing first\n(FR-SCP-001); ``Case.scope_ref``/``Case.scope_digest`` bind a case to\nexactly one ``ScopePolicy`` instance and version.",
+  "properties": {
+    "actions": {
+      "$ref": "#/$defs/ActionsPolicy"
+    },
+    "authorization": {
+      "$ref": "#/$defs/Authorization"
+    },
+    "budgets": {
+      "$ref": "#/$defs/Budgets"
+    },
+    "case_id": {
+      "maxLength": 64,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "filesystem": {
+      "$ref": "#/$defs/FilesystemPolicy"
+    },
+    "network": {
+      "$ref": "#/$defs/NetworkPolicy"
+    },
+    "schema_version": {
+      "const": "aegis.scope_policy/v1",
+      "default": "aegis.scope_policy/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "targets": {
+      "$ref": "#/$defs/Targets"
+    },
+    "tools": {
+      "$ref": "#/$defs/ToolsPolicy"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "case_id",
+    "version",
+    "authorization",
+    "targets",
+    "network",
+    "filesystem",
+    "tools",
+    "actions",
+    "budgets"
+  ],
+  "title": "ScopePolicy",
+  "type": "object"
+}

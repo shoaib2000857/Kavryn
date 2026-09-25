@@ -1,0 +1,108 @@
+{
+  "$defs": {
+    "ActorRole": {
+      "description": "Who is acting, for the authorization tuple in docs/CONTROL_PLANE.md.",
+      "enum": [
+        "operator",
+        "reasoning_runtime",
+        "worker",
+        "control_plane",
+        "system"
+      ],
+      "title": "ActorRole",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A structured request from the reasoning plane to the action broker.",
+  "properties": {
+    "action_type": {
+      "maxLength": 128,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "title": "Action Type",
+      "type": "string"
+    },
+    "actor_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "adapter": {
+      "maxLength": 128,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "title": "Adapter",
+      "type": "string"
+    },
+    "case_id": {
+      "maxLength": 64,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "expected_evidence": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Expected Evidence",
+      "type": "array"
+    },
+    "id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "parameters": {
+      "additionalProperties": true,
+      "title": "Parameters",
+      "type": "object"
+    },
+    "reason": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+    },
+    "requested_at": {
+      "format": "date-time",
+      "title": "Requested At",
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/ActorRole"
+    },
+    "schema_version": {
+      "const": "aegis.action_request/v1",
+      "default": "aegis.action_request/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "target_ref": {
+      "maxLength": 2048,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+      "title": "Target Ref",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "case_id",
+    "actor_id",
+    "role",
+    "action_type",
+    "target_ref",
+    "adapter",
+    "reason",
+    "requested_at"
+  ],
+  "title": "ActionRequest",
+  "type": "object"
+}

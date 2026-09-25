@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "CaseStatus": {
+      "description": "Case lifecycle status.\n\nOnly the statuses needed to model the emergency-stop invariant in\ndocs/CONTROL_PLANE.md are included here. The full workflow state\nmachine (docs/IMPLEMENTATION_HANDOFF.md, Change 2) is out of scope\nfor this change.",
+      "enum": [
+        "open",
+        "control_stopped",
+        "closed"
+      ],
+      "title": "CaseStatus",
+      "type": "string"
+    },
+    "Digest": {
+      "additionalProperties": false,
+      "description": "A content hash used to content-address an artifact or record.\n\nOnly sha256 is accepted for this change; widening the algorithm set\nlater is additive and does not require a schema version bump.",
+      "properties": {
+        "algorithm": {
+          "default": "sha256",
+          "pattern": "^sha256$",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest"
+      ],
+      "title": "Digest",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A case: the unit of authorization, evidence, and audit scoping.\n\nA case never embeds its scope policy inline; it carries a reference\nand a content digest so the policy can be stored, hashed, and\naudited independently (docs/ARCHITECTURE.md, data-flow step 2:\n\"Case service creates a case and hashes the scope policy.\").",
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Created By",
+      "type": "string"
+    },
+    "id": {
+      "maxLength": 64,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "aegis.case/v1",
+      "default": "aegis.case/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "scope_ref": {
+      "maxLength": 2048,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+      "title": "Scope Ref",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/CaseStatus",
+      "default": "open"
+    },
+    "title": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "created_at",
+    "created_by",
+    "scope_ref",
+    "scope_digest"
+  ],
+  "title": "Case",
+  "type": "object"
+}

@@ -1,0 +1,1 @@
+Welcome to demo-api. This file is intentionally served by /download?filename=welcome.txt.

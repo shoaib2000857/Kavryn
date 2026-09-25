@@ -1,0 +1,134 @@
+{
+  "$defs": {
+    "ActorRole": {
+      "description": "Who is acting, for the authorization tuple in docs/CONTROL_PLANE.md.",
+      "enum": [
+        "operator",
+        "reasoning_runtime",
+        "worker",
+        "control_plane",
+        "system"
+      ],
+      "title": "ActorRole",
+      "type": "string"
+    },
+    "AuditEventType": {
+      "description": "A controlled vocabulary of auditable lifecycle events.\n\nLimited, for this change, to events over the records introduced\nhere (case, action request, policy decision, evidence). New event\ntypes are additive and do not require a schema version bump.",
+      "enum": [
+        "case_created",
+        "case_control_stopped",
+        "case_closed",
+        "action_requested",
+        "policy_decision_recorded",
+        "evidence_recorded",
+        "tool_run_recorded"
+      ],
+      "title": "AuditEventType",
+      "type": "string"
+    },
+    "Digest": {
+      "additionalProperties": false,
+      "description": "A content hash used to content-address an artifact or record.\n\nOnly sha256 is accepted for this change; widening the algorithm set\nlater is additive and does not require a schema version bump.",
+      "properties": {
+        "algorithm": {
+          "default": "sha256",
+          "pattern": "^sha256$",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest"
+      ],
+      "title": "Digest",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One append-only, hash-chained audit record.\n\n``prev_event_digest`` is ``None`` only for the first event recorded\nfor a case; every subsequent event must reference the digest of the\nevent immediately before it.",
+  "properties": {
+    "actor_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "case_id": {
+      "maxLength": 64,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "event_type": {
+      "$ref": "#/$defs/AuditEventType"
+    },
+    "id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "integrity": {
+      "$ref": "#/$defs/Digest"
+    },
+    "prev_event_digest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Digest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "role": {
+      "$ref": "#/$defs/ActorRole"
+    },
+    "schema_version": {
+      "const": "aegis.audit_event/v1",
+      "default": "aegis.audit_event/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "subject_ref": {
+      "maxLength": 2048,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+      "title": "Subject Ref",
+      "type": "string"
+    },
+    "summary": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Summary",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "case_id",
+    "created_at",
+    "event_type",
+    "actor_id",
+    "role",
+    "subject_ref",
+    "summary",
+    "integrity"
+  ],
+  "title": "AuditEvent",
+  "type": "object"
+}

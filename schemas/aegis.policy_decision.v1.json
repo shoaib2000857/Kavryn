@@ -1,0 +1,111 @@
+{
+  "$defs": {
+    "PolicyOutcome": {
+      "description": "The three terminal-or-pending dispositions of a policy evaluation.",
+      "enum": [
+        "permitted",
+        "denied",
+        "approval_required"
+      ],
+      "title": "PolicyOutcome",
+      "type": "string"
+    },
+    "RiskTier": {
+      "description": "Risk tiers from docs/CONTROL_PLANE.md, assigned by policy, not the model.",
+      "enum": [
+        "r0_observe",
+        "r1_analyze",
+        "r2_validate",
+        "r3_reversible_response",
+        "r4_change",
+        "r5_high_impact"
+      ],
+      "title": "RiskTier",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The outcome of evaluating one ``ActionRequest`` against scope and policy.\n\nA capability reference may only be present when the outcome is\n``PERMITTED`` (docs/CONTROL_PLANE.md capability lifecycle: a\ncapability is only ``Issued`` when a request is \"permitted\"). A\ndenied or approval-pending decision that carried a capability would\nbe a control-plane integrity failure, so it is rejected here.",
+  "properties": {
+    "capability_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Capability Ref"
+    },
+    "case_id": {
+      "maxLength": 64,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "decided_at": {
+      "format": "date-time",
+      "title": "Decided At",
+      "type": "string"
+    },
+    "id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "outcome": {
+      "$ref": "#/$defs/PolicyOutcome"
+    },
+    "policy_version": {
+      "maxLength": 200,
+      "minLength": 1,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "reasons": {
+      "items": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Reasons",
+      "type": "array"
+    },
+    "request_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "risk_tier": {
+      "$ref": "#/$defs/RiskTier"
+    },
+    "schema_version": {
+      "const": "aegis.policy_decision/v1",
+      "default": "aegis.policy_decision/v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "case_id",
+    "request_id",
+    "decided_at",
+    "policy_version",
+    "risk_tier",
+    "outcome",
+    "reasons"
+  ],
+  "title": "PolicyDecision",
+  "type": "object"
+}

@@ -1,0 +1,25 @@
+# Pinned, offline Semgrep ruleset for the analysis worker (no registry
+# fetch — the worker runs with --network none, so rules must be baked
+# into the image, per docs/TOOLS_AND_SANDBOXES.md's tool-descriptor
+# convention of a "ruleset_ref: immutable-artifact").
+rules:
+  - id: python-flask-path-traversal
+    languages: [python]
+    severity: ERROR
+    message: >-
+      Untrusted Flask request input flows into a filesystem path
+      operation without validation or canonicalization (CWE-22, path
+      traversal).
+    mode: taint
+    pattern-sources:
+      - pattern: request.args.get(...)
+      - pattern: request.args[...]
+      - pattern: request.values.get(...)
+      - pattern: request.form.get(...)
+    pattern-sinks:
+      - pattern: os.path.join(...)
+      - pattern: open(...)
+    metadata:
+      cwe: "CWE-22"
+      references:
+        - https://cwe.mitre.org/data/definitions/22.html

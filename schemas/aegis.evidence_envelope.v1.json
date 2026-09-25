@@ -1,0 +1,152 @@
+{
+  "$defs": {
+    "Classification": {
+      "description": "Data-sensitivity label carried on every evidence record.\n\ndocs/OPEN_QUESTIONS.md OQ-005 leaves open which classifications may\nleave the local environment; this enum only names the labels used to\ntag evidence, it does not decide any egress policy for them.",
+      "enum": [
+        "public",
+        "internal",
+        "restricted"
+      ],
+      "title": "Classification",
+      "type": "string"
+    },
+    "Digest": {
+      "additionalProperties": false,
+      "description": "A content hash used to content-address an artifact or record.\n\nOnly sha256 is accepted for this change; widening the algorithm set\nlater is additive and does not require a schema version bump.",
+      "properties": {
+        "algorithm": {
+          "default": "sha256",
+          "pattern": "^sha256$",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest"
+      ],
+      "title": "Digest",
+      "type": "object"
+    },
+    "Producer": {
+      "additionalProperties": false,
+      "description": "Provenance of a record: what produced it, and at what pinned version.",
+      "properties": {
+        "name": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "$ref": "#/$defs/ProducerType"
+        },
+        "version": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "version"
+      ],
+      "title": "Producer",
+      "type": "object"
+    },
+    "ProducerType": {
+      "description": "What kind of component produced an evidence record.",
+      "enum": [
+        "adapter",
+        "sensor",
+        "operator",
+        "model",
+        "control_plane"
+      ],
+      "title": "ProducerType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A single content-addressed, provenance-carrying evidence record.\n\n``classification`` has no default: FR-ING-002 and SR-SEC-001 require\nevery producer to make an explicit sensitivity decision rather than\ninheriting a silent default.",
+  "properties": {
+    "case_id": {
+      "maxLength": 64,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "classification": {
+      "$ref": "#/$defs/Classification"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "integrity": {
+      "$ref": "#/$defs/Digest"
+    },
+    "payload": {
+      "additionalProperties": true,
+      "title": "Payload",
+      "type": "object"
+    },
+    "producer": {
+      "$ref": "#/$defs/Producer"
+    },
+    "schema_version": {
+      "const": "aegis.evidence_envelope/v1",
+      "default": "aegis.evidence_envelope/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_refs": {
+      "default": [],
+      "items": {
+        "maxLength": 2048,
+        "minLength": 3,
+        "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+        "type": "string"
+      },
+      "title": "Source Refs",
+      "type": "array"
+    },
+    "subject_refs": {
+      "items": {
+        "maxLength": 2048,
+        "minLength": 3,
+        "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Subject Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "case_id",
+    "created_at",
+    "producer",
+    "subject_refs",
+    "integrity",
+    "classification"
+  ],
+  "title": "EvidenceEnvelope",
+  "type": "object"
+}
