@@ -2,6 +2,20 @@
 
 ## Architectural thesis
 
+### Runtime-first direction (accepted 2026-09-25)
+
+The longer-term flagship is a reusable **agent execution runtime**, not a prescriptive agent framework. Reasoning and orchestration remain replaceable; the runtime owns action authorization and effects. Cyber defense is its first reference application. The target abstraction is a transaction:
+
+```text
+PROPOSE -> AUTHORIZE -> STAGE -> EXECUTE -> OBSERVE -> VERIFY
+                                      ├── verified -> COMMIT -> RECEIPT
+                                      └── failed   -> ROLLBACK / ESCALATE -> RECEIPT
+```
+
+The current prototype has an immutable transaction record/state graph, an in-process one-use capability authority, broker lifecycle audit events, a verifier-driven commit/rollback coordinator, and audit-linked receipts. Per-case audit chains can be exported as stable JSONL and checked with `python scripts/verify_audit_stream.py <file>`; the export preserves integrity links but does not provide durable storage, writer authentication, or an external anchor. Two owned synthetic ranges (path traversal and object authorization) now pass deterministic brokered incident-to-recovery integration tests using stub proposals and oracle patches; these do not demonstrate live model repair. Their scenario-configured investigations combine brokered scan/log actions with route/source bindings and same-version provenance. The deployment adapter remains bound to one configured local fixture/service at a time and receives Docker control only as an adapter privilege—not as model access. The core also defines a domain-neutral `SandboxBackend` request/result protocol used by the one-shot analysis worker's Docker implementation; range lifecycle still uses its own bound Docker adapters and helper path. The protocol is substitutable plumbing, not an isolation guarantee. Capabilities and audit/artifact stores remain process-local/in-memory, with no signed grant or external audit anchor. This distinction is critical: **execution is not verification, and verification is not commit**. See ADR-036, ADR-038, and ADR-040–052.
+
+The core runtime must not import the cyber defender. Future package extraction should be driven by dependency tests and use cases, not mechanical moves. The current `aegis.core` package is an initial foothold, not evidence that the repository is already cleanly split.
+
 Aegis is two systems, not one:
 
 1. an autonomous defender that reasons about evidence and proposes defensive work; and
@@ -65,16 +79,19 @@ Controls cyber-range scenarios, attack replays, noisy background activity, hidde
 | Policy engine | Pure decision over identity, action, resource, target, risk, and state | Trusted control component |
 | Capability broker | Issues and revokes short-lived worker capabilities | Trusted control component |
 | Action broker | Validates typed requests, authorizes, dispatches, records | Trusted control component |
+| Action catalog | Binds versioned action types to adapters; validates declared input/output shapes and metadata | Trusted control component; coordinator checks the expected verifier identity |
 | Workflow engine | Executes explicit state transitions and bounded retries | Trusted, but no direct tools |
 | Context builder | Selects and redacts evidence for the model | Partially trusted |
 | Model provider | Returns structured proposals | Untrusted adviser |
 | Tool adapter | Converts typed request to a fixed command/API operation | Narrow trusted computing base |
 | Worker sandbox | Executes an adapter with quotas and isolation | Untrusted execution environment |
 | Evidence store | Stores normalized evidence and artifact references | Case data; agent may append only through APIs |
-| Audit sink | Append-only control and execution events | High-integrity trusted service |
-| Clean-room verifier | Rebuilds and evaluates candidates independently | High-integrity trusted service |
+| Audit sink | Append-only control and execution events | Current implementation is in-memory and hash-linked; not a durable/authenticated trusted service |
+| Clean-room verifier | Rebuilds and evaluates candidates independently | Separate Docker worker for patch checks; generic action-verifier callbacks are not yet isolated |
 | Assurance gate | Applies deterministic acceptance policy | High-integrity trusted service |
 | Approval service | Captures human identity, decision, expiry, and constraints | Trusted control component |
+
+Every registered adapter now requires one or more versioned `ActionDefinition` contracts. The broker resolves the action type, validates adapter binding and declared primitive parameter fields/types before capability issuance, checks agreement with deterministic policy risk, and validates successful adapter outputs before accepting them as normal execution evidence. The coordinator checks that the verifier identity returned by the independent verifier matches the action contract; a mismatch becomes failed verification and follows rollback/escalation. Resource declarations currently must equal adapter limits; they cannot request a tighter per-action cap.
 
 ## Trust boundaries
 

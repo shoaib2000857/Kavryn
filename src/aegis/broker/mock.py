@@ -17,6 +17,7 @@ from aegis.broker.adapter import (
     ToolAdapter,
     validate_parameters,
 )
+from aegis.core.actions import ActionDefinition
 from aegis.domain.action import ActionRequest
 
 __all__ = ["MockAdapter"]
@@ -30,11 +31,13 @@ class MockAdapter(ToolAdapter):
         descriptor: AdapterDescriptor,
         *,
         allowed_parameter_keys: frozenset[str] = frozenset(),
+        action_definitions: tuple[ActionDefinition, ...] = (),
         result: AdapterResult = _DEFAULT_RESULT,
         simulate_timeout: bool = False,
     ) -> None:
         self.descriptor = descriptor
         self.allowed_parameter_keys = allowed_parameter_keys
+        self.action_definitions = action_definitions
         self._result = result
         self._simulate_timeout = simulate_timeout
         self.calls: list[ActionRequest] = []

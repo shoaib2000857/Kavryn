@@ -23,6 +23,7 @@ __all__ = ["classify_risk"]
 
 _NAMESPACE_RISK_TIER: dict[str, RiskTier] = {
     "evidence": RiskTier.R0_OBSERVE,
+    "telemetry": RiskTier.R0_OBSERVE,
     "scan": RiskTier.R1_ANALYZE,
     "dependency": RiskTier.R1_ANALYZE,
     "secret": RiskTier.R1_ANALYZE,

@@ -10,11 +10,20 @@ convention.
 
 from __future__ import annotations
 
+import json
 from typing import Protocol
 
 from aegis.domain.audit import AuditEvent
+from aegis.domain.base import Digest
+from aegis.evidence.store import sha256_digest
 
-__all__ = ["AuditChainError", "AuditSink", "InMemoryAuditSink"]
+__all__ = [
+    "AuditChainError",
+    "AuditSink",
+    "InMemoryAuditSink",
+    "audit_event_digest",
+    "verify_audit_chain",
+]
 
 
 class AuditChainError(ValueError):
@@ -30,6 +39,39 @@ class AuditSink(Protocol):
 
     def last_event(self, case_id: str) -> AuditEvent | None:
         """Return the most recently appended event for ``case_id``, if any."""
+
+
+def audit_event_digest(event: AuditEvent) -> Digest:
+    """Recompute an event's content digest using stable field serialization."""
+    payload = json.dumps(
+        {
+            "id": event.id,
+            "case_id": event.case_id,
+            "created_at": event.created_at.isoformat(),
+            "event_type": event.event_type.value,
+            "actor_id": event.actor_id,
+            "role": event.role.value,
+            "subject_ref": event.subject_ref,
+            "summary": event.summary,
+        },
+        sort_keys=True,
+    ).encode()
+    return sha256_digest(payload)
+
+
+def verify_audit_chain(events: tuple[AuditEvent, ...]) -> bool:
+    """Verify event content and predecessor links in append order.
+
+    This detects changes relative to existing hashes; it does not authenticate
+    who created the stream or prevent an attacker from rewriting and
+    re-hashing the entire stream. Durable external anchoring remains future work.
+    """
+    previous: Digest | None = None
+    for event in events:
+        if event.prev_event_digest != previous or audit_event_digest(event) != event.integrity:
+            return False
+        previous = event.integrity
+    return True
 
 
 class InMemoryAuditSink:

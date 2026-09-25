@@ -39,10 +39,36 @@ def _load_rules() -> dict[str, list[str]]:
         with open(RULES_PATH) as handle:
             data = json.load(handle)
     except (OSError, json.JSONDecodeError):
-        return {"deny_query_patterns": []}
+        return {"deny_query_patterns": [], "deny_authorization_patterns": []}
     if not isinstance(data, dict) or not isinstance(data.get("deny_query_patterns"), list):
-        return {"deny_query_patterns": []}
-    return data
+        return {"deny_query_patterns": [], "deny_authorization_patterns": []}
+    query_patterns = data["deny_query_patterns"]
+    authorization_patterns = data.get("deny_authorization_patterns", [])
+    if (
+        not _valid_patterns(query_patterns)
+        or not isinstance(authorization_patterns, list)
+        or not _valid_patterns(authorization_patterns)
+    ):
+        return {"deny_query_patterns": [], "deny_authorization_patterns": []}
+    return {
+        "deny_query_patterns": query_patterns,
+        "deny_authorization_patterns": authorization_patterns,
+    }
+
+
+def _valid_patterns(patterns: object) -> bool:
+    if not isinstance(patterns, list) or len(patterns) > 16:
+        return False
+    if any(
+        not isinstance(pattern, str) or not pattern or len(pattern) > 256 for pattern in patterns
+    ):
+        return False
+    try:
+        for pattern in patterns:
+            re.compile(pattern)
+    except re.error:
+        return False
+    return True
 
 
 class ProxyHandler(BaseHTTPRequestHandler):
@@ -54,7 +80,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
     def _handle(self) -> None:
         rules = _load_rules()
         patterns = rules.get("deny_query_patterns", [])
-        blocked = any(re.search(pattern, self.path) for pattern in patterns)
+        authorization_patterns = rules.get("deny_authorization_patterns", [])
+        authorization = self.headers.get("Authorization", "")
+        blocked = any(re.search(pattern, self.path) for pattern in patterns) or any(
+            re.search(pattern, authorization) for pattern in authorization_patterns
+        )
         log_entry: dict[str, object] = {
             "ts": time.time(),
             "method": "GET",
@@ -74,7 +104,13 @@ class ProxyHandler(BaseHTTPRequestHandler):
             return
 
         try:
-            with urllib.request.urlopen(BACKEND_URL + self.path, timeout=5) as response:
+            forwarded_headers = {"Authorization": authorization} if authorization else {}
+            upstream_request = urllib.request.Request(
+                BACKEND_URL + self.path,
+                headers=forwarded_headers,
+                method="GET",
+            )
+            with urllib.request.urlopen(upstream_request, timeout=5) as response:
                 body = response.read()
                 status = response.status
                 headers = response.getheaders()

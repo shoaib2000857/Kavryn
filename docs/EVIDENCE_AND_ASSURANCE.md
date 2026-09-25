@@ -72,6 +72,18 @@ A finding should capture:
 
 The system must not manufacture a CVE identifier or convert a tool's severity into universal ground truth.
 
+### Initial investigation correlation
+
+The experimental correlator creates a `hypothesis` only for same-case suspicious
+telemetry when an explicit owner-authored route-to-source mapping matches a
+normalized static finding and scan-source digest equals deployed-source digest.
+The record links case-scoped artifact references for the normalized scanner result,
+raw telemetry, and deployment provenance. The summary states that causal relevance
+is unconfirmed. A matching route and finding is a triage lead, not proof that the
+finding caused the observed event. This is required by the fixed path-traversal
+Docker case before containment; persistence and generalized artifact retrieval
+remain unimplemented.
+
 ## Patch candidate schema
 
 - base repository and immutable commit;

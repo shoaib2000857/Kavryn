@@ -46,6 +46,10 @@ class AuditEventType(StrEnum):
     CASE_CLOSED = "case_closed"
     ACTION_REQUESTED = "action_requested"
     POLICY_DECISION_RECORDED = "policy_decision_recorded"
+    APPROVAL_RECORDED = "approval_recorded"
+    TRANSACTION_TRANSITION_RECORDED = "transaction_transition_recorded"
+    CAPABILITY_ISSUED = "capability_issued"
+    CAPABILITY_REVOKED = "capability_revoked"
     EVIDENCE_RECORDED = "evidence_recorded"
     TOOL_RUN_RECORDED = "tool_run_recorded"
 

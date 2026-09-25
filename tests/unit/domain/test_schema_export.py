@@ -18,6 +18,14 @@ def test_committed_schemas_match_generated_output() -> None:
         )
 
 
+def test_transaction_and_capability_contracts_are_registered() -> None:
+    """Core authorization/execution records must never silently disappear from exports."""
+    assert {
+        "aegis.action_transaction.v1.json",
+        "aegis.capability.v1.json",
+    } <= set(generate())
+
+
 def test_no_stray_schema_files_are_committed() -> None:
     rendered = generate()
     on_disk = {p.name for p in SCHEMAS_DIR.glob("*.json")}

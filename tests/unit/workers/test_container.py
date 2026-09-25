@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 
+from aegis.core.sandbox import SandboxExecutionResult
 from aegis.workers.container import (
     ContainerRunError,
     ContainerRunSpec,
@@ -132,3 +133,24 @@ def test_run_container_returns_stdout_and_exit_code_on_success(
     assert result.exit_code == 0
     assert result.stdout == '{"results": []}'
     assert result.timed_out is False
+
+
+def test_run_container_accepts_an_alternate_core_backend() -> None:
+    class FakeBackend:
+        def __init__(self) -> None:
+            self.request: ContainerRunSpec | None = None
+
+        def execute(self, request: ContainerRunSpec) -> SandboxExecutionResult:
+            self.request = request
+            return SandboxExecutionResult(
+                exit_code=0,
+                stdout="isolated",
+                stderr="",
+                timed_out=False,
+                duration_seconds=0.01,
+            )
+
+    backend = FakeBackend()
+    result = run_container(_spec(), backend=backend)
+    assert backend.request == _spec()
+    assert result.stdout == "isolated"

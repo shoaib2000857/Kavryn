@@ -1,6 +1,6 @@
 # Aegis documentation index
 
-This directory is the project source of truth during the research and architecture phase.
+This directory is the project source of truth during research and implementation. The runtime is an early prototype; consult progress and active tasks for evidence-backed status.
 
 ## Reading order
 
@@ -24,6 +24,10 @@ This directory is the project source of truth during the research and architectu
 18. [Worklog](WORKLOG.md)
 19. [Source registry](SOURCES.md)
 20. [Progress report](PROGRESS_REPORT.md)
+21. [Active tasks](ACTIVE_TASKS.md) — current implementation queue, completed work, and next milestones.
+
+CI is defined in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). It does not
+receive model credentials; CI results do not substitute for external benchmark runs.
 
 ## Status vocabulary
 

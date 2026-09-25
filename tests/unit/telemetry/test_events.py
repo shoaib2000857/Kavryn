@@ -30,6 +30,23 @@ def test_classify_path_benign_download() -> None:
     assert classify_path("/download?filename=welcome.txt") is EventClassification.BENIGN
 
 
+def test_classify_path_uses_owner_configured_prefix_as_only_a_heuristic() -> None:
+    assert (
+        classify_path(
+            "/documents/doc-alice?source=range",
+            suspicious_path_prefixes=("/documents",),
+        )
+        is EventClassification.SUSPICIOUS
+    )
+    assert (
+        classify_path(
+            "/documents-archive/doc-alice",
+            suspicious_path_prefixes=("/documents",),
+        )
+        is EventClassification.BENIGN
+    )
+
+
 def _log_line(**overrides: object) -> str:
     entry: dict[str, object] = {
         "ts": time.time(),

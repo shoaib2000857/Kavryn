@@ -20,6 +20,7 @@ from typing import Any, Literal, Protocol
 
 from pydantic import Field
 
+from aegis.core.actions import ActionDefinition
 from aegis.domain.action import ActionRequest
 from aegis.domain.base import AegisModel, Digest, ToolId
 from aegis.domain.policy import RiskTier
@@ -54,6 +55,7 @@ class AdapterPermissions(AegisModel):
     filesystem: Literal["none", "read-target", "read-write-workspace"]
     network: Literal["none"] = "none"
     secrets: Literal["none"] = "none"
+    docker_control: Literal["none", "authorized-range"] = "none"
 
 
 class AdapterDescriptor(AegisModel):
@@ -106,5 +108,6 @@ class ToolAdapter(Protocol):
 
     descriptor: AdapterDescriptor
     allowed_parameter_keys: frozenset[str]
+    action_definitions: tuple[ActionDefinition, ...]
 
     def run(self, request: ActionRequest, *, capability_ref: str) -> AdapterResult: ...

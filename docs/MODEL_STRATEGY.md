@@ -102,6 +102,14 @@ Required controls:
 - provider response treated as untrusted;
 - no provider-supplied tool execution outside Aegis's broker.
 
+### Current development endpoint (2026-09-25)
+
+The owner supplied an OpenAI-compatible llama.cpp server hosted on an A100. It exposes several model aliases, but switching aliases causes model offload/reload, so the current development default is **`qwen38`**. Keep the server warm and do not switch models merely to probe alternatives. With the corrected local environment, a synthetic-only smoke proposal succeeded and a full-source-v2 object-authorization patch passed the clean-room verifier; the path-traversal response was a no-op. Configure it with `LLM_URL`, `LLM_API_KEY`, and optionally `LLM_MODEL`; `scripts/smoke_model_api.py` makes a single structured call without executing the proposed action. `scripts/bench_live_model.py --provider hosted --trials 1` runs a local Docker range and makes one model-backed containment proposal.
+
+The endpoint is remote inference: only synthetic range information was used. Do not send private repositories, real incident logs, credentials, or personal data under the current decision. The key must never be committed or printed; rotate the key shared in chat after testing. Hosted calls are manual and excluded from CI/default tests.
+
+`src/aegis/repair/provider.py` defines `HostedPatchProvider` for one explicitly allowlisted repair file. The prompt requests complete replacement source and a repair invariant; Aegis constructs the unified diff locally so the model cannot corrupt hunk counts. The request explicitly uses `reasoning_effort: none` and `max_tokens: 8192`, checks truncation/no-op output, and records finish reason and endpoint token usage when present. The clean-room verifier alone receives hidden tests. One object-authorization patch passed; the path-traversal attempt was an unchanged-source no-op, and two earlier model-authored diffs failed build. This is a small owned-fixture pilot, not an external benchmark or general coding-quality result. Only synthetic fixture source is approved for hosted input.
+
 ## Colab mode
 
 The planned notebook should:

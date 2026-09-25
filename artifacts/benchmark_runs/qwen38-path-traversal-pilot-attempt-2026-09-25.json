@@ -1,0 +1,15 @@
+{
+  "benchmark": "Aegis synthetic repair pilot",
+  "benchmark_layer": 0,
+  "not_a_standard_benchmark": true,
+  "case_id": "AGE-PATCH-PILOT-01",
+  "provider": "openai-compatible-hosted",
+  "model": "qwen38",
+  "outcome": "INFRASTRUCTURE_ERROR",
+  "error": "HTTP 401 Unauthorized from the configured inference service",
+  "candidate_generated": false,
+  "verifier_run": false,
+  "api_key_or_endpoint_recorded": false,
+  "timestamp_utc_date": "2026-09-25",
+  "interpretation": "No patch-quality or repair-capability result can be inferred from this attempt."
+}

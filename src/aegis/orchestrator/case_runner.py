@@ -43,6 +43,9 @@ import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from aegis.core.transaction import TransactionState
+from aegis.investigation.correlation import CorrelationReport
+from aegis.orchestrator.actions import BrokeredDefenderActions
 from aegis.providers.base import ReasoningProvider
 from aegis.providers.schemas import (
     EvidenceContext,
@@ -73,16 +76,16 @@ class CaseDependencies:
 
     provider: ReasoningProvider
     exploit_reachable: Callable[[], bool]
-    approve_containment: Callable[[], bool]
-    apply_containment: Callable[[], None]
-    rollback_containment: Callable[[], None]
     attack_blocked: Callable[[], bool]
     benign_available: Callable[[], bool]
+    brokered_actions: BrokeredDefenderActions
     generate_candidate: Callable[[], PatchCandidate]
     verify_candidate: Callable[[PatchCandidate], AssuranceOutcome]
-    approve_deployment: Callable[[], bool]
+    deployment_target_ref: str
     recovery_attack_blocked: Callable[[], bool]
     recovery_benign_available: Callable[[], bool]
+    investigate: Callable[[], CorrelationReport]
+    incident_summary: str = "Suspicious path-traversal-shaped requests observed against the range."
     recurrence_detected: Callable[[], bool] = lambda: False
     containment_tools: tuple[ToolDescriptor, ...] = ()
     max_containment_attempts: int = 2
@@ -103,6 +106,7 @@ class CaseTrace:
     notes: list[str] = field(default_factory=list)
     halted: bool = False
     halt_reason: str = ""
+    investigation: CorrelationReport | None = None
 
     def note(self, text: str) -> None:
         """Attach a note to the current state without transitioning."""
@@ -186,8 +190,26 @@ def run_case(case_id: str, deps: CaseDependencies) -> CaseTrace:
     trace.advance(Trigger.ADVANCE, "scope accepted")
     trace.advance(Trigger.ADVANCE, "telemetry observed")
     trace.advance(Trigger.ADVANCE, f"triaged: exploit_reachable={deps.exploit_reachable()}")
-    trace.advance(Trigger.ADVANCE, "investigated: candidate hypothesis formed")
-    trace.advance(Trigger.ADVANCE, "ready to propose containment")
+    trace.advance(Trigger.ADVANCE, "evidence correlation started")
+    try:
+        investigation = deps.investigate()
+    except Exception as exc:
+        trace.note(f"evidence correlation failed ({type(exc).__name__}); fail closed")
+        return trace.halt("investigation evidence could not be correlated")
+    trace.investigation = investigation
+    if investigation.case_id != case_id:
+        trace.note("investigation report belongs to a different case; fail closed")
+        return trace.halt("cross-case investigation report rejected")
+    if not investigation.hypotheses:
+        trace.note(
+            "no evidence-linked investigation hypothesis was produced; "
+            f"warnings={','.join(investigation.warnings) or 'none'}"
+        )
+        return trace.halt("insufficient correlated evidence for containment")
+    trace.advance(
+        Trigger.ADVANCE,
+        f"investigated: {len(investigation.hypotheses)} evidence-linked hypothesis(es)",
+    )
 
     contained = False
     for attempt in range(1, deps.max_containment_attempts + 1):
@@ -199,7 +221,7 @@ def run_case(case_id: str, deps: CaseDependencies) -> CaseTrace:
                 "Propose a reversible containment action for the observed suspicious traffic. "
                 "The adapter field must be exactly the id of one of the tools listed below."
             ),
-            summary="Suspicious path-traversal-shaped requests observed against the range.",
+            summary=deps.incident_summary,
             tools=deps.containment_tools,
         )
         if failure is not None:
@@ -212,25 +234,47 @@ def run_case(case_id: str, deps: CaseDependencies) -> CaseTrace:
         trace.note(f"containment proposed (attempt {attempt}): {proposal.rationale}")
 
         trace.advance(Trigger.RISK_REQUIRES_APPROVAL, "awaiting containment approval")
-        if not deps.approve_containment():
-            trace.advance(Trigger.DENIED_OR_EXPIRED, "containment approval denied or expired")
-            return trace.halt("containment approval denied or expired")
-        trace.advance(Trigger.APPROVED, "containment approved")
+        assert proposal.action is not None
+        try:
+            result = deps.brokered_actions.contain(
+                proposal.action,
+                exploit_reachable=deps.exploit_reachable,
+                attack_blocked=deps.attack_blocked,
+                benign_available=deps.benign_available,
+            )
+        except Exception as exc:
+            trace.note(f"brokered containment failed ({type(exc).__name__}); no direct fallback")
+            return trace.halt("brokered containment failed closed")
 
-        deps.apply_containment()
-        trace.advance(Trigger.ADVANCE, "containment applied; verifying")
+        state = result.transaction.state
+        if state is TransactionState.AWAITING_APPROVAL:
+            trace.note("broker transaction is waiting for attributed human approval")
+            return trace.halt("containment approval is still pending")
+        if state is TransactionState.DENIED:
+            denial_reason = (
+                result.transaction.transitions[-1].reason
+                if result.transaction.transitions
+                else "policy denied the action"
+            )
+            trace.advance(
+                Trigger.DENIED_OR_EXPIRED, f"broker policy denied containment: {denial_reason}"
+            )
+            return trace.halt(f"containment action denied by broker policy: {denial_reason}")
 
-        blocked, available = deps.attack_blocked(), deps.benign_available()
-        if blocked and available:
+        trace.advance(Trigger.APPROVED, "broker verified attributed containment approval")
+        trace.advance(Trigger.ADVANCE, "typed containment action executed; verifying")
+        if state is TransactionState.COMMITTED:
             trace.advance(Trigger.EFFECTIVE, f"containment effective on attempt {attempt}")
             contained = True
             break
-
-        if blocked and not available:
-            deps.rollback_containment()
-            trace.note(f"containment broke availability on attempt {attempt}; rolled back")
+        if state is TransactionState.ROLLED_BACK:
+            trace.note(
+                f"containment failed independent checks on attempt {attempt}; "
+                "broker rollback was verified"
+            )
         else:
-            trace.note(f"containment ineffective on attempt {attempt}")
+            trace.note(f"brokered containment ended in {state.value}; fail closed")
+            return trace.halt(f"containment transaction ended in {state.value}")
 
         if attempt == deps.max_containment_attempts:
             return trace.halt("containment budget exhausted without an effective result")
@@ -259,12 +303,50 @@ def run_case(case_id: str, deps: CaseDependencies) -> CaseTrace:
         trace.advance(Trigger.INSUFFICIENT_EVIDENCE, "escalating: repair did not reach VERIFIED")
         return trace.halt(f"repair did not reach VERIFIED (last outcome: {outcome.value})")
 
-    if not deps.approve_deployment():
-        trace.advance(Trigger.DENIED_OR_EXPIRED, "deployment approval denied or expired")
-        return trace.halt("deployment approval denied or expired")
-    trace.advance(Trigger.APPROVED, "deployment approved")
+    try:
+        deployment = deps.brokered_actions.deploy(
+            candidate,
+            target_ref=deps.deployment_target_ref,
+            attack_blocked=deps.recovery_attack_blocked,
+            benign_available=deps.recovery_benign_available,
+        )
+    except Exception as exc:
+        trace.note(f"brokered deployment failed ({type(exc).__name__}); no direct fallback")
+        return trace.halt("brokered deployment failed closed")
 
-    trace.advance(Trigger.ADVANCE, "verified candidate deployed; verifying recovery")
+    deployment_state = deployment.transaction.state
+    if deployment_state is TransactionState.AWAITING_APPROVAL:
+        trace.note("deployment transaction is waiting for attributed human approval")
+        return trace.halt("deployment approval is still pending")
+    if deployment_state is TransactionState.DENIED:
+        trace.advance(Trigger.DENIED_OR_EXPIRED, "deployment approval denied or expired")
+        denial_reason = (
+            deployment.transaction.transitions[-1].reason
+            if deployment.transaction.transitions
+            else "policy denied the deployment"
+        )
+        return trace.halt(f"deployment denied by broker policy: {denial_reason}")
+    trace.advance(Trigger.APPROVED, "broker verified attributed deployment approval")
+
+    trace.advance(Trigger.ADVANCE, "brokered candidate rollout completed; verifying recovery")
+
+    if deployment_state is TransactionState.ROLLED_BACK:
+        trace.advance(
+            Trigger.FAILED, "deployment postconditions failed; rollback independently verified"
+        )
+        trace.advance(Trigger.ADVANCE, "prior deployment and containment restored")
+        return trace.halt("deployment verification failed; brokered rollback completed")
+    if deployment_state is not TransactionState.COMMITTED:
+        failure_reason = (
+            deployment.transaction.transitions[-1].reason
+            if deployment.transaction.transitions
+            else f"deployment transaction ended in {deployment_state.value}"
+        )
+        trace.advance(Trigger.FAILED, failure_reason)
+        trace.advance(Trigger.ADVANCE, "deployment stopped without commit")
+        return trace.halt(
+            f"deployment transaction ended in {deployment_state.value}: {failure_reason}"
+        )
 
     if deps.recovery_attack_blocked() and deps.recovery_benign_available():
         trace.advance(

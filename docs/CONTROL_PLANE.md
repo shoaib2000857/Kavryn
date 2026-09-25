@@ -65,7 +65,7 @@ The final schema will be versioned and validated; this example is not executable
 
 | Tier | Examples | Default treatment |
 | --- | --- | --- |
-| **R0 Observe** | Read normalized evidence, query case metadata | Automatic |
+| **R0 Observe** | Read normalized evidence, query case metadata, fetch bounded in-scope telemetry | Automatic |
 | **R1 Analyze** | Static scan, dependency lookup, parse artifacts | Automatic in isolated worker |
 | **R2 Validate** | Run tests, fuzzers, exploit replay against range fixture | Automatic only in isolated authorized range |
 | **R3 Reversible response** | Quarantine container, temporary rate limit, revoke synthetic session | Policy-dependent; approval for early versions |

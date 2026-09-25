@@ -50,8 +50,8 @@ stateDiagram-v2
 | Scoped | Signed scope and target identities | Immutable policy reference | Permission beyond policy |
 | Observe | Normalized events and target state | Observations with provenance | Root cause |
 | Triage | Observations | Severity, confidence, candidate incident | Attribution without evidence |
-| Investigate | Case evidence | Timeline, hypotheses, affected assets, gaps | Certainty from one scanner |
-| Contain proposal | Supported hypothesis | Typed action, effect, risk, rollback | Approval |
+| Investigate | Same-case telemetry, findings, route/source map, deployment provenance | Source-version-bound evidence-linked hypotheses and gaps | Causality or certainty from co-occurrence |
+| Contain proposal | At least one case-matching hypothesis | Typed action, effect, risk, rollback | Approval or authority beyond scope |
 | Containment verify | Action result and fresh telemetry | Effective/ineffective/uncertain | Vulnerability fixed |
 | Localize | Runtime and build provenance | Repo/commit/component/code candidates | Correct line without support |
 | Repair | Evidence context | Candidate diff(s), rationale, proposed tests | Patch correctness |
@@ -59,6 +59,23 @@ stateDiagram-v2
 | Recover | Approved verified candidate | New deployment/canary identity | Full recovery |
 | Recovery verify | New telemetry, replay, benign workload | Restored security and service evidence | No future attack possible |
 | Monitor | Observation policy | Recurrence/no-recurrence result | Permanent elimination |
+
+The current path-traversal reference scenario implements investigation in
+`aegis.investigation.range.RangeEvidenceInvestigator`. It requests Semgrep findings
+and proxy logs through separate registered broker actions, records deployment
+provenance as a content-addressed artifact, and emits a hypothesis only when
+same-case/source/version correlation succeeds. The telemetry action is fixed to
+the configured local proxy, read-only, byte-bounded, and classified R0 by policy.
+This implementation is scenario-specific; it is not a general SIEM connector or
+durable evidence service.
+
+The same state machine now has a second deterministic integration for the
+object-authorization fixture. It uses a trusted `/documents` route/source binding,
+an offline CWE-862 Semgrep rule, a synthetic-token proxy containment rule, and an
+oracle patch candidate evaluated by the clean-room verifier. This demonstrates
+workflow reuse across two owned fixtures, not model-generated repair or general
+identity-provider integration; see ADR-052 and the current verification in
+`docs/ACTIVE_TASKS.md`.
 
 ## Repository-only repair workflow
 

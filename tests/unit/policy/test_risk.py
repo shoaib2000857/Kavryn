@@ -10,6 +10,7 @@ from aegis.policy.risk import classify_risk
     ("action_type", "expected"),
     [
         ("evidence.read", RiskTier.R0_OBSERVE),
+        ("telemetry.read", RiskTier.R0_OBSERVE),
         ("scan.run", RiskTier.R1_ANALYZE),
         ("patch.propose", RiskTier.R1_ANALYZE),
         ("test.run", RiskTier.R2_VALIDATE),

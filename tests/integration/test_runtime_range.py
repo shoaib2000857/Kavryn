@@ -12,7 +12,6 @@ checks."
 
 from __future__ import annotations
 
-import socket
 import subprocess
 import time
 from collections.abc import Iterator
@@ -26,7 +25,13 @@ from aegis.evidence.store import InMemoryArtifactStore
 from aegis.range.containment import ContainmentRule, write_rules
 from aegis.range.network import create_network, remove_network
 from aegis.range.provenance import DeploymentProvenance
-from aegis.range.service import ServiceSpec, container_logs, start_service, stop_service
+from aegis.range.service import (
+    ServiceSpec,
+    container_ip,
+    container_logs,
+    start_service,
+    stop_service,
+)
 from aegis.range.traffic import send_get
 from aegis.repair.hashing import hash_source_tree
 from aegis.telemetry.events import EventClassification, parse_proxy_log_line
@@ -69,12 +74,6 @@ def _build_image(dockerfile_dir: Path, tag: str) -> str:
     return result.stdout.strip()
 
 
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
-
-
 @pytest.fixture(scope="session")
 def app_image_id() -> str:
     return _build_image(APP_DOCKERFILE_DIR, "aegis-range-app:inttest")
@@ -98,8 +97,15 @@ def running_range(
     stop_service(PROXY_NAME)
     remove_network(NETWORK_NAME)
     create_network(NETWORK_NAME)
+    network_config = subprocess.run(
+        ["docker", "network", "inspect", "--format={{.Internal}}", NETWORK_NAME],
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert network_config.stdout.strip().lower() == "true"
 
-    host_port = _free_port()
     try:
         start_service(ServiceSpec(image=app_image_id, name=APP_NAME, network=NETWORK_NAME))
         start_service(
@@ -108,11 +114,24 @@ def running_range(
                 name=PROXY_NAME,
                 network=NETWORK_NAME,
                 env={"AEGIS_BACKEND_URL": f"http://{APP_NAME}:8080"},
-                published_port=(host_port, 8081),
                 volumes=((str(rules_dir), "/rules", "ro"),),
             )
         )
-        base_url = f"http://127.0.0.1:{host_port}"
+        for container_name in (APP_NAME, PROXY_NAME):
+            port_bindings = subprocess.run(
+                [
+                    "docker",
+                    "inspect",
+                    "--format={{json .HostConfig.PortBindings}}",
+                    container_name,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            assert port_bindings.stdout.strip() in {"null", "{}"}
+        base_url = f"http://{container_ip(PROXY_NAME)}:8081"
         _wait_until_ready(base_url)
         yield base_url, str(rules_file)
     finally:

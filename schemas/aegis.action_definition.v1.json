@@ -1,0 +1,263 @@
+{
+  "$defs": {
+    "ActionParameter": {
+      "additionalProperties": false,
+      "description": "A small, runtime-enforced JSON value contract for one named field.",
+      "properties": {
+        "description": {
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "required": {
+          "default": true,
+          "title": "Required",
+          "type": "boolean"
+        },
+        "value_type": {
+          "$ref": "#/$defs/ActionValueType"
+        }
+      },
+      "required": [
+        "name",
+        "value_type",
+        "description"
+      ],
+      "title": "ActionParameter",
+      "type": "object"
+    },
+    "ActionResources": {
+      "additionalProperties": false,
+      "description": "Declared resource envelope; the concrete adapter/backend must enforce it.",
+      "properties": {
+        "cpu": {
+          "exclusiveMinimum": 0,
+          "title": "Cpu",
+          "type": "number"
+        },
+        "memory_mb": {
+          "exclusiveMinimum": 0,
+          "title": "Memory Mb",
+          "type": "integer"
+        },
+        "timeout_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Timeout Seconds",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "timeout_seconds",
+        "cpu",
+        "memory_mb"
+      ],
+      "title": "ActionResources",
+      "type": "object"
+    },
+    "ActionSideEffect": {
+      "enum": [
+        "read",
+        "write",
+        "network",
+        "deployment"
+      ],
+      "title": "ActionSideEffect",
+      "type": "string"
+    },
+    "ActionValueType": {
+      "enum": [
+        "string",
+        "integer",
+        "number",
+        "boolean",
+        "object",
+        "array"
+      ],
+      "title": "ActionValueType",
+      "type": "string"
+    },
+    "RiskTier": {
+      "description": "Risk tiers from docs/CONTROL_PLANE.md, assigned by policy, not the model.",
+      "enum": [
+        "r0_observe",
+        "r1_analyze",
+        "r2_validate",
+        "r3_reversible_response",
+        "r4_change",
+        "r5_high_impact"
+      ],
+      "title": "RiskTier",
+      "type": "string"
+    },
+    "VerificationContract": {
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "title": "Required",
+          "type": "boolean"
+        },
+        "verifier_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verifier Id"
+        }
+      },
+      "required": [
+        "required"
+      ],
+      "title": "VerificationContract",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Immutable, versioned contract binding intent to a registered adapter.",
+  "properties": {
+    "action_type": {
+      "maxLength": 128,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "title": "Action Type",
+      "type": "string"
+    },
+    "adapter_id": {
+      "maxLength": 128,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "title": "Adapter Id",
+      "type": "string"
+    },
+    "description": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "filesystem": {
+      "enum": [
+        "none",
+        "read-target",
+        "read-write-workspace"
+      ],
+      "title": "Filesystem",
+      "type": "string"
+    },
+    "idempotent": {
+      "default": false,
+      "title": "Idempotent",
+      "type": "boolean"
+    },
+    "inputs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ActionParameter"
+      },
+      "title": "Inputs",
+      "type": "array"
+    },
+    "max_retries": {
+      "default": 0,
+      "maximum": 5,
+      "minimum": 0,
+      "title": "Max Retries",
+      "type": "integer"
+    },
+    "network": {
+      "const": "none",
+      "default": "none",
+      "title": "Network",
+      "type": "string"
+    },
+    "outputs": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ActionParameter"
+      },
+      "title": "Outputs",
+      "type": "array"
+    },
+    "resources": {
+      "$ref": "#/$defs/ActionResources"
+    },
+    "reversible": {
+      "default": false,
+      "title": "Reversible",
+      "type": "boolean"
+    },
+    "risk_tier": {
+      "$ref": "#/$defs/RiskTier"
+    },
+    "rollback_action_type": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rollback Action Type"
+    },
+    "schema_version": {
+      "const": "aegis.action_definition/v1",
+      "default": "aegis.action_definition/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "secrets": {
+      "const": "none",
+      "default": "none",
+      "title": "Secrets",
+      "type": "string"
+    },
+    "side_effects": {
+      "items": {
+        "$ref": "#/$defs/ActionSideEffect"
+      },
+      "title": "Side Effects",
+      "type": "array"
+    },
+    "verification": {
+      "$ref": "#/$defs/VerificationContract"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "action_type",
+    "version",
+    "adapter_id",
+    "description",
+    "risk_tier",
+    "side_effects",
+    "filesystem",
+    "resources",
+    "verification"
+  ],
+  "title": "ActionDefinition",
+  "type": "object"
+}

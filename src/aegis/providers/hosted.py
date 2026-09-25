@@ -50,6 +50,7 @@ class HostedProviderConfig(AegisModel):
     model: str = Field(min_length=1)
     timeout_seconds: float = Field(gt=0, default=30.0)
     max_repair_attempts: int = Field(ge=0, default=1)
+    reasoning_effort: str | None = None
 
 
 _SYSTEM_PROMPT = (
@@ -120,16 +121,22 @@ class HostedOpenAICompatibleProvider:
         self._http_post = http_post
         self.calls: list[ReasoningTask] = []
 
-    def _call(self, messages: list[dict[str, str]]) -> str:
-        body = json.dumps(
-            {"model": self._config.model, "messages": messages, "temperature": 0}
-        ).encode()
+    def _call(self, messages: list[dict[str, str]], limits: InferenceLimits) -> str:
+        payload: dict[str, object] = {
+            "model": self._config.model,
+            "messages": messages,
+            "temperature": 0,
+            "max_tokens": limits.max_output_tokens,
+        }
+        if self._config.reasoning_effort is not None:
+            payload["reasoning_effort"] = self._config.reasoning_effort
+        body = json.dumps(payload).encode()
         headers = {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
         raw = self._http_post(
-            f"{self._config.base_url}/chat/completions",
+            f"{self._config.base_url.rstrip('/')}/chat/completions",
             headers,
             body,
-            self._config.timeout_seconds,
+            min(self._config.timeout_seconds, limits.timeout_seconds),
         )
         try:
             data = json.loads(raw)
@@ -161,9 +168,9 @@ class HostedOpenAICompatibleProvider:
                     ),
                 }
             )
-            return self._call(messages)
+            return self._call(messages, limits)
 
-        raw = self._call(messages)
+        raw = self._call(messages, limits)
         try:
             return parse_with_bounded_repair(
                 raw, repair=repair, max_repair_attempts=self._config.max_repair_attempts

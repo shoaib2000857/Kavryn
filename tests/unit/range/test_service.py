@@ -1,11 +1,18 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 
 import pytest
 
 from aegis.range.docker_cmd import DockerCommandError
-from aegis.range.service import ServiceSpec, container_logs, start_service, stop_service
+from aegis.range.service import (
+    ServiceSpec,
+    container_ip,
+    container_logs,
+    start_service,
+    stop_service,
+)
 
 
 class _FakeRunner:
@@ -80,10 +87,43 @@ def test_start_service_raises_on_failure() -> None:
         start_service(_spec(), runner=fake)
 
 
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"image": "--privileged"},
+        {"name": "../host"},
+        {"network": "--network=host"},
+        {"volumes": (("/", "/host", "rw"),)},
+        {"volumes": (("/tmp/../etc", "/etc", "ro"),)},
+        {"volumes": (("/tmp/rules", "relative", "ro"),)},
+        {"published_port": (0, 8080)},
+        {"published_port": (8080, 65536)},
+        {"env": {"BAD=KEY": "value"}},
+        {"env": {"SAFE": "contains\x00nul"}},
+    ],
+)
+def test_service_spec_rejects_unsafe_runtime_configuration(
+    overrides: dict[str, object],
+) -> None:
+    with pytest.raises(ValueError):
+        _spec(**overrides)
+
+
 def test_stop_service_uses_force_remove() -> None:
     fake = _FakeRunner()
     stop_service("aegis-range-app-AGE-0001", runner=fake)
     assert fake.calls == [["docker", "rm", "-f", "aegis-range-app-AGE-0001"]]
+
+
+@pytest.mark.parametrize("name", ["--help", "../escape", "bad name"])
+@pytest.mark.parametrize("operation", [stop_service, container_logs])
+def test_service_helpers_reject_unsafe_container_names_before_docker(
+    name: str, operation: Callable[..., object]
+) -> None:
+    fake = _FakeRunner()
+    with pytest.raises(DockerCommandError, match="safe Docker identifier"):
+        operation(name, runner=fake)
+    assert fake.calls == []
 
 
 def test_container_logs_combines_stdout_and_stderr() -> None:
@@ -91,3 +131,34 @@ def test_container_logs_combines_stdout_and_stderr() -> None:
     logs = container_logs("aegis-range-app-AGE-0001", runner=fake)
     assert "line one" in logs
     assert "line two" in logs
+
+
+def test_container_ip_uses_fixed_inspect_and_returns_valid_address() -> None:
+    fake = _FakeRunner(stdout="172.18.0.3\n")
+    assert container_ip("aegis-range-proxy", runner=fake) == "172.18.0.3"
+    assert fake.calls == [
+        [
+            "docker",
+            "inspect",
+            "--format={{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
+            "aegis-range-proxy",
+        ]
+    ]
+
+
+@pytest.mark.parametrize("name", ["--help", "../escape", "bad name"])
+def test_container_ip_rejects_unsafe_container_name(name: str) -> None:
+    fake = _FakeRunner()
+    with pytest.raises(DockerCommandError, match="safe Docker identifier"):
+        container_ip(name, runner=fake)
+    assert fake.calls == []
+
+
+@pytest.mark.parametrize(
+    "returncode,stdout",
+    [(1, ""), (0, "not-an-ip")],
+)
+def test_container_ip_rejects_missing_or_invalid_address(returncode: int, stdout: str) -> None:
+    fake = _FakeRunner(returncode=returncode, stdout=stdout)
+    with pytest.raises(DockerCommandError):
+        container_ip("aegis-range-proxy", runner=fake)

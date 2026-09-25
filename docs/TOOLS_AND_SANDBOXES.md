@@ -75,10 +75,17 @@ Do not let model-selected relevance bypass deterministic compatibility or author
 ### Dynamic validation worker
 
 - copy-on-write target workspace;
-- isolated network containing only the target fixture;
+- Docker `--internal` network containing only the target fixture, with effective network configuration checked before use;
 - scenario-defined request/replay adapters;
 - no control-plane credentials;
 - stronger containment than the analysis worker.
+
+The current path-traversal range uses that internal-network setting: app and proxy
+containers may communicate with each other but do not receive ordinary external
+network connectivity. Neither container has a published port; local tests contact
+the configured proxy IP from the trusted host. Docker internal mode can still permit
+host/gateway communication, so container-to-host access is not proven blocked. The
+rootful Docker host remains trusted.
 
 ### Patch worker
 
@@ -102,7 +109,45 @@ Do not let model-selected relevance bypass deterministic compatibility or author
 - mandatory before-state and after-state capture;
 - predefined rollback where possible.
 
+### Local range deployment adapter
+
+The path-traversal reference scenario now has a typed `deployment.rollout` adapter and paired `deployment.rollback` adapter. They accept a target reference, candidate diff, and content digests—not arbitrary commands, image names, or container names from the model. The adapter is configured with one fixture, service, network, and allowed source file; builds with Docker networking disabled; checks the running service; and retains prior image/containment state for a brokered rollback. The broker descriptor explicitly declares `docker_control="authorized-range"`.
+
+The local proxy containment adapter can also be configured with a bounded set
+of fixed regular expressions and an owner-selected rule-set identifier. These
+values are trusted deployment configuration, never model-supplied action
+parameters. For the synthetic object-authorization case, it temporarily blocks
+one synthetic bearer token while preserving the other test principal's document
+access. The proxy forwards only the `Authorization` header to its configured
+backend and never logs its value. This remains a fixture-specific test primitive,
+not a production authentication proxy; see ADR-052 and T24.
+
+The scenario's evidence investigator also reads proxy logs through the registered
+`range.proxy.logs` adapter (`telemetry.read`). The adapter fixes the container and
+target at construction, accepts no parameters, limits the Docker-log tail to 200
+lines and at most 512 KiB, and records the call/result through the broker. The model
+does not receive a container selector or Docker command. The operation is an
+observation, classified as R0 by deterministic policy; malformed or out-of-scope
+requests are rejected before Docker is invoked.
+
+This is a local test-range integration, not a general deployment API. Docker control still has host-level trust implications, current execution is rootful, and the adapter's resource declarations are not a hardened hostile-build limit. Do not use it against production or arbitrary repositories. See ADR-043 and the residual risks in the threat model.
+
+### Range service launch configuration
+
+`ServiceSpec` validates image references and container/network identifiers before
+constructing Docker arguments; stop, log, and inspect helpers also validate
+container names. Host mounts must be absolute and traversal-free,
+container destinations normalized absolute paths, and host mount mode is
+read-only. Explicit published ports remain representable for separately reviewed
+scenarios, but each port must be in `1..65535`; the current reference range
+publishes none. These checks reduce configuration mistakes and argument/volume
+abuse. They do not strengthen rootful Docker isolation, authenticate image
+contents, or authorize a range operation; policy and broker checks remain
+separate.
+
 ## Isolation maturity
+
+The reusable runtime core defines `SandboxBackend.execute(request)` with typed request/result models. The current `DockerSandboxBackend` implements that protocol for one-shot analysis workers only; tests also inject a fake backend to verify the dependency inversion. No rootless, gVisor, Firecracker, or remote implementation exists. Range deployment and network/service lifecycle remain separate Docker-specific code paths. A backend interface does not itself strengthen the isolation level.
 
 | Level | Boundary | Suitable use |
 | --- | --- | --- |

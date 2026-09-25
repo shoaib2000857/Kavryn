@@ -1,5 +1,7 @@
 # Implementation handoff
 
+> **Status note (2026-09-25):** The original Change 1–8 handoff below is historical; all eight cyber-defense slices already exist in this checkout. Its provider and runtime status notes are superseded by ADR-037/038. The current flagship direction is the reusable transactional execution runtime with cyber defense as reference application. Continue from [ACTIVE_TASKS.md](ACTIVE_TASKS.md), not from Change 1. In particular, the in-process capability prototype does not yet provide a hardened process boundary, and broker execution is not postcondition verification or commit.
+
 This document is the execution contract for Codex, Claude Code, or another coding agent after the owner starts the build phase.
 
 ## Required preflight
@@ -188,11 +190,10 @@ requirements satisfied, files changed, tests run, permissions/network/secrets ad
 threat-model impact, and remaining limitations.
 ```
 
-## Owner inputs needed before real-model integration
+## Owner inputs needed before production-like hosted inference / public release
 
-- provider/API choice and account;
-- monthly/per-run spending limit;
-- allowed data classifications for hosted inference;
+- spending/availability limits for the supplied endpoint;
+- allowed data classifications beyond synthetic local-range inputs;
 - secret-storage method;
 - preferred first benchmark licenses/storage budget;
 - whether local Docker is available and acceptable for the MVP;

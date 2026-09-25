@@ -3,9 +3,11 @@
 ## Working identity
 
 - **Working name:** Aegis Defender
-- **Nature:** independent research and engineering project
+- **Nature:** independent, non-hackathon research and engineering project
 - **Not:** a hackathon submission, a generic pentesting bot, or an unrestricted autonomous operator
-- **One-line thesis:** useful autonomous cyber defense requires an independently enforced control plane and independently verified remediation, not merely a capable model with shell access.
+- **One-line thesis:** a reusable runtime should let autonomous agents propose consequential work without granting unconditional authority; actions must be scoped, policy-checked, isolated, independently verified, reversible where possible, and evidence-bearing. Cyber defense is the first demanding reference application.
+
+The project governs execution, not cognition. It is not intended to replace LangGraph, OpenAI/Anthropic agent SDKs, or other agent loops. Those may eventually submit typed actions to the runtime. The current repository name is provisional and will not be changed until a deliberate naming review.
 
 The name is still provisional. “ASTRA” is intentionally not used because it belongs to the separate reference project and now also conflicts with an OpenAI cyber model name.
 
@@ -22,7 +24,15 @@ Build and evaluate a defensive agent framework that can:
 
 ## Research question
 
-Can a control-first autonomous defender execute the closed loop from post-compromise telemetry to verified software recovery while remaining inside a deterministic operational envelope under adversarial inputs?
+Can an execution runtime make consequential agent actions bounded, inspectable, reversible where possible, and independently verifiable—and can that improve safe end-to-end cyber defense under adversarial inputs?
+
+The target action lifecycle is:
+
+```text
+PROPOSE -> AUTHORIZE -> EXECUTE -> OBSERVE -> VERIFY -> COMMIT / ROLL BACK -> RECEIPT
+```
+
+This is the research target, not a claim that generic transaction coordination is complete today.
 
 ## Product pillars
 

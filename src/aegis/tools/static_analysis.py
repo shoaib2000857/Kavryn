@@ -18,8 +18,17 @@ separately in ``tests/integration``.
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import PurePosixPath
 
 from aegis.broker.adapter import AdapterDescriptor, AdapterResult, validate_parameters
+from aegis.core.actions import (
+    ActionDefinition,
+    ActionParameter,
+    ActionResources,
+    ActionSideEffect,
+    ActionValueType,
+    VerificationContract,
+)
 from aegis.domain.action import ActionRequest
 from aegis.evidence.store import ArtifactStore
 from aegis.tools.findings import (
@@ -34,6 +43,25 @@ from aegis.workers.container import run_container as _default_run_container
 __all__ = ["ContainerStaticAnalysisAdapter", "make_bandit_adapter", "make_semgrep_adapter"]
 
 _ALLOWED_PARAMETER_KEYS = frozenset({"source_dir"})
+
+
+def _normalize_finding_path(path: str) -> str:
+    """Convert a worker path into a safe path relative to its `/src` mount."""
+    if path.startswith("/"):
+        if not path.startswith("/src/"):
+            raise FindingsParseError("scanner finding path is outside the /src mount")
+        relative_path = path.removeprefix("/src/")
+    else:
+        relative_path = path
+    parsed = PurePosixPath(relative_path)
+    if (
+        not parsed.parts
+        or any(part in {".", ".."} for part in parsed.parts)
+        or parsed.as_posix() != relative_path
+        or "\\" in relative_path
+    ):
+        raise FindingsParseError("scanner finding path is not a normalized relative path")
+    return parsed.as_posix()
 
 
 class ContainerStaticAnalysisAdapter:
@@ -53,6 +81,46 @@ class ContainerStaticAnalysisAdapter:
         runner: Callable[[ContainerRunSpec], ContainerRunResult] = _default_run_container,
     ) -> None:
         self.descriptor = descriptor
+        self.action_definitions: tuple[ActionDefinition, ...] = (
+            ActionDefinition(
+                action_type="scan.run",
+                version=1,
+                adapter_id=descriptor.id,
+                description=f"Run the registered {descriptor.category} analysis adapter.",
+                inputs=(
+                    ActionParameter(
+                        name="source_dir",
+                        value_type=ActionValueType.STRING,
+                        description="Authorized source directory mounted read-only.",
+                    ),
+                ),
+                outputs=(
+                    ActionParameter(
+                        name="findings",
+                        value_type=ActionValueType.ARRAY,
+                        required=False,
+                        description="Normalized security findings.",
+                    ),
+                    ActionParameter(
+                        name="parse_error",
+                        value_type=ActionValueType.BOOLEAN,
+                        required=False,
+                        description="Whether tool output parsing failed.",
+                    ),
+                ),
+                risk_tier=descriptor.risk_tier,
+                side_effects=(ActionSideEffect.READ,),
+                filesystem="read-target",
+                resources=ActionResources(
+                    timeout_seconds=descriptor.limits.timeout_seconds,
+                    cpu=descriptor.limits.cpu,
+                    memory_mb=descriptor.limits.memory_mb,
+                ),
+                verification=VerificationContract(required=False),
+                idempotent=True,
+                max_retries=0,
+            ),
+        )
         self._artifacts = artifacts
         self._allowed_source_root = allowed_source_root
         self._image_ref = image_ref
@@ -90,7 +158,14 @@ class ContainerStaticAnalysisAdapter:
             )
 
         try:
-            findings = self._output_parser(result.stdout)
+            parsed_findings = self._output_parser(result.stdout)
+            findings = tuple(
+                NormalizedFinding(
+                    **finding.model_dump(exclude={"file"}),
+                    file=_normalize_finding_path(finding.file),
+                )
+                for finding in parsed_findings
+            )
         except FindingsParseError:
             return AdapterResult(
                 exit_status="failure",

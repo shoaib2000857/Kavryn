@@ -1,0 +1,252 @@
+{
+  "$defs": {
+    "Digest": {
+      "additionalProperties": false,
+      "description": "A content hash used to content-address an artifact or record.\n\nOnly sha256 is accepted for this change; widening the algorithm set\nlater is additive and does not require a schema version bump.",
+      "properties": {
+        "algorithm": {
+          "default": "sha256",
+          "pattern": "^sha256$",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest"
+      ],
+      "title": "Digest",
+      "type": "object"
+    },
+    "ExecutionDisposition": {
+      "enum": [
+        "committed",
+        "rolled_back",
+        "denied",
+        "escalated",
+        "control_failure"
+      ],
+      "title": "ExecutionDisposition",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Portable statement of what a transaction attempted and verified.",
+  "properties": {
+    "action_type": {
+      "maxLength": 128,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "title": "Action Type",
+      "type": "string"
+    },
+    "actor_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Actor Id",
+      "type": "string"
+    },
+    "adapter": {
+      "maxLength": 128,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "title": "Adapter",
+      "type": "string"
+    },
+    "audit_root": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Digest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "capability_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Capability Ref"
+    },
+    "case_id": {
+      "maxLength": 64,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "disposition": {
+      "$ref": "#/$defs/ExecutionDisposition"
+    },
+    "environment_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Environment Ref"
+    },
+    "evidence_refs": {
+      "default": [],
+      "items": {
+        "maxLength": 2048,
+        "minLength": 3,
+        "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "input_artifacts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Digest"
+      },
+      "title": "Input Artifacts",
+      "type": "array"
+    },
+    "integrity": {
+      "$ref": "#/$defs/Digest"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "title": "Issued At",
+      "type": "string"
+    },
+    "model_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Id"
+    },
+    "model_provider": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Provider"
+    },
+    "output_artifacts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Digest"
+      },
+      "title": "Output Artifacts",
+      "type": "array"
+    },
+    "policy_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "rollback_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rollback Ref"
+    },
+    "schema_version": {
+      "const": "aegis.execution_receipt/v1",
+      "default": "aegis.execution_receipt/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "target_ref": {
+      "maxLength": 2048,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+      "title": "Target Ref",
+      "type": "string"
+    },
+    "transaction_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Transaction Id",
+      "type": "string"
+    },
+    "verification_refs": {
+      "default": [],
+      "items": {
+        "maxLength": 2048,
+        "minLength": 3,
+        "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+        "type": "string"
+      },
+      "title": "Verification Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "transaction_id",
+    "case_id",
+    "actor_id",
+    "action_type",
+    "adapter",
+    "target_ref",
+    "scope_digest",
+    "policy_version",
+    "disposition",
+    "issued_at",
+    "integrity"
+  ],
+  "title": "ExecutionReceipt",
+  "type": "object"
+}

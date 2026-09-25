@@ -100,6 +100,60 @@ def test_successful_scan_produces_normalized_findings_and_digest(
     assert store.get(result.stdout_digest) == VALID_SEMGREP_STDOUT.encode()
 
 
+def test_worker_absolute_paths_are_normalized_to_source_relative_paths(
+    tmp_path: Path, now: datetime
+) -> None:
+    output = VALID_SEMGREP_STDOUT.replace('"path": "app.py"', '"path": "/src/app.py"')
+    fake = _FakeRunner(
+        ContainerRunResult(
+            exit_code=0,
+            stdout=output,
+            stderr="",
+            timed_out=False,
+            duration_seconds=0.1,
+        )
+    )
+    adapter = make_semgrep_adapter(
+        _descriptor(),
+        artifacts=InMemoryArtifactStore(),
+        allowed_source_root=str(tmp_path),
+        image_ref="aegis-analysis-worker@sha256:" + "a" * 64,
+        runner=fake,
+    )
+    result = adapter.run(
+        _request(now, str(tmp_path)), capability_ref="capability://AGE-0001/cap-path"
+    )
+    assert result.exit_status == "success"
+    assert result.output["findings"][0]["file"] == "app.py"
+
+
+def test_worker_finding_path_outside_mount_is_reported_as_failure(
+    tmp_path: Path, now: datetime
+) -> None:
+    output = VALID_SEMGREP_STDOUT.replace('"path": "app.py"', '"path": "/etc/passwd"')
+    fake = _FakeRunner(
+        ContainerRunResult(
+            exit_code=0,
+            stdout=output,
+            stderr="",
+            timed_out=False,
+            duration_seconds=0.1,
+        )
+    )
+    adapter = make_semgrep_adapter(
+        _descriptor(),
+        artifacts=InMemoryArtifactStore(),
+        allowed_source_root=str(tmp_path),
+        image_ref="aegis-analysis-worker@sha256:" + "a" * 64,
+        runner=fake,
+    )
+    result = adapter.run(
+        _request(now, str(tmp_path)), capability_ref="capability://AGE-0001/cap-outside"
+    )
+    assert result.exit_status == "failure"
+    assert result.output == {"parse_error": True}
+
+
 def test_container_spec_uses_no_network_and_read_only_mount(tmp_path: Path, now: datetime) -> None:
     fake = _FakeRunner(
         ContainerRunResult(

@@ -62,16 +62,29 @@ class TelemetryParseError(ValueError):
     """Raised when a raw telemetry line cannot be safely normalized."""
 
 
-def classify_path(path: str) -> EventClassification:
+def classify_path(
+    path: str, *, suspicious_path_prefixes: tuple[str, ...] = ()
+) -> EventClassification:
     """A heuristic, inference-only classification -- never a confirmed verdict."""
     lowered = path.lower()
-    if any(indicator in lowered for indicator in _TRAVERSAL_INDICATORS):
+    request_path = lowered.split("?", maxsplit=1)[0].split("#", maxsplit=1)[0]
+    configured_prefix_match = any(
+        request_path == prefix.lower().rstrip("/")
+        or request_path.startswith(prefix.lower().rstrip("/") + "/")
+        for prefix in suspicious_path_prefixes
+    )
+    if configured_prefix_match or any(indicator in lowered for indicator in _TRAVERSAL_INDICATORS):
         return EventClassification.SUSPICIOUS
     return EventClassification.BENIGN
 
 
 def parse_proxy_log_line(
-    line: str, *, case_id: str, event_id: str, artifacts: ArtifactStore
+    line: str,
+    *,
+    case_id: str,
+    event_id: str,
+    artifacts: ArtifactStore,
+    suspicious_path_prefixes: tuple[str, ...] = (),
 ) -> NormalizedEvent:
     try:
         data = json.loads(line)
@@ -100,6 +113,8 @@ def parse_proxy_log_line(
         status_code=int(data["status"]),
         client_label=str(data["client"]),
         blocked=bool(data["blocked"]),
-        inferred_classification=classify_path(path),
+        inferred_classification=classify_path(
+            path, suspicious_path_prefixes=suspicious_path_prefixes
+        ),
         raw_digest=raw_digest,
     )

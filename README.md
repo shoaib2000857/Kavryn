@@ -1,14 +1,28 @@
 # Aegis Defender
 
-**Control-first autonomous cyber defense: detect, contain, repair, verify, and recover.**
+**A transactional execution runtime for autonomous agents, proven first on cyber defense.**
 
-> Project status: research and architecture phase. This repository currently contains specifications and an implementation handoff, not a runnable defensive product.
+> Project status: early research implementation. The existing cyber-defense vertical is runnable in local Docker ranges; the reusable transaction runtime is newly being extracted and is not production-hardened.
 
-Aegis Defender is an independent research project for building an autonomous defensive-security framework that can investigate attacks, identify software vulnerabilities, take bounded containment actions, create repairs in isolated environments, and independently verify recovery. It is not a hackathon submission and it is not an autonomous pentesting product.
+Aegis Defender is an independent, non-hackathon open-source research project. Its long-term thesis is that agents should be able to propose consequential actions without receiving unconditional authority: actions are scoped, policy-checked, capability-bound, isolated, independently verified, and recorded as evidence. Cyber defense is the first demanding reference application—not the limit of the intended runtime.
 
 The project is organized around one rule:
 
-> **The model may propose actions. It never grants itself authority, and it never verifies its own work.**
+> **We govern execution, not cognition. Intelligence is not authority.**
+
+The project is not a new agent-loop framework and does not replace LangGraph, an SDK, or a model provider. Those systems may propose work; Aegis is intended to govern how registered actions execute and how their outcomes are verified.
+
+## Transactional autonomy
+
+The target action contract is:
+
+```text
+Propose -> Authorize -> Execute in isolation -> Observe -> Verify -> Commit / Roll back -> Receipt
+```
+
+The current prototype includes immutable action-transaction records, expiring single-use capabilities, versioned action contracts enforced at broker dispatch, a verifier-gated coordinator, rollback, and audit-linked receipts. In the path-traversal reference range, containment, candidate rollout, and rollback use fixed typed broker actions; the Docker lifecycle and other future adapters are not generalized, and the audit/artifact stores remain in-memory. See [active tasks](docs/ACTIVE_TASKS.md) for exact status and limitations.
+
+A second owned synthetic fixture, [object-authorization-v1](ranges/object-authorization-v1/README.md), now runs through a deterministic incident-to-recovery case: cross-owner access is reproduced through the isolated proxy, brokered telemetry and Semgrep produce an evidence-linked hypothesis, a synthetic session is temporarily contained, a known oracle patch passes clean-room tests, and the brokered deployment is replay-verified. This integration uses a stub proposal and a pre-authored oracle patch; it is not model-generated repair or benchmark performance.
 
 ## Intended capability
 
@@ -42,13 +56,13 @@ flowchart LR
     G -->|insufficient evidence| X[Refuse or escalate]
 ```
 
-## Three product planes
+## Product layers
 
 | Plane | Responsibility |
 | --- | --- |
-| **Defense plane** | Detect, investigate, contain, localize, repair, recover, and monitor. |
-| **Control plane** | Enforce identities, capability grants, scope, budgets, network policy, approvals, and emergency stops. |
-| **Evaluation plane** | Run reproducible cyber-range scenarios, preserve hidden ground truth, and measure capability and safety separately. |
+| **Core runtime (emerging)** | Typed action contracts, deterministic policy, capability lifecycle, transaction state, audit, verifier-gated commit/rollback, and receipts. Must remain domain-neutral; current stores/authority remain in-process. |
+| **Cyber defender (reference app)** | Detect, investigate, contain, localize, repair, recover, and monitor within authorized local ranges. |
+| **Evaluation** | Reproducible ranges and benchmarks measuring capability, control, and efficiency separately. |
 
 ## Documentation map
 
@@ -79,25 +93,31 @@ Start with the [documentation index](docs/README.md). The core documents are:
 | Area | Status |
 | --- | --- |
 | Research framing | Documented |
-| Architecture and trust model | Documented; not implemented |
-| Model/provider strategy | Documented; provider not selected |
+| Transactional agent-runtime direction | Documented and partially implemented; early prototype |
+| Model/provider strategy | Provider-neutral; corrected local qwen38 configuration passed a synthetic smoke test and produced one verifier-passing fixture repair; no model switching |
 | MVP acceptance criteria | Documented; not implemented |
 | Foundation domain schemas (Case, ScopePolicy, EvidenceEnvelope, ActionRequest, PolicyDecision, AuditEvent) | Implemented and verified (`docs/IMPLEMENTATION_HANDOFF.md` Change 1) |
 | Policy engine (pure decision function, risk tiers, target resolution, budgets) and workflow state machine | Implemented and verified (Change 2) |
-| Provider boundary (protocol, structured proposals, stub/replay providers, bounded repair) | Implemented and verified (Change 3); no live hosted provider — see OQ-004 |
-| Typed tool broker (registry, typed adapter protocol, local mock worker, audit wiring) | Implemented and verified (Change 4); no real analysis tool, container backend, or worker yet |
-| Isolated analysis worker (pinned Docker image, Semgrep/Bandit adapters, no-network + read-only mount, vulnerable fixture) | Implemented and verified (Change 5), including real-Docker integration tests; interim rootful Docker per ADR-023/OQ-006 |
+| Provider boundary (protocol, structured proposals, stub/replay, hosted OpenAI-compatible provider) | Implemented; fake-transport tests pass; one qwen38 hosted smoke and one live range trial recorded (ADR-037) |
+| Typed tool broker (registry, typed adapter protocol, policy enforcement, capability issuance/consumption, transaction transitions, hash-linked audit) | Implemented and unit-tested; current capability authority is in-process only |
+| Versioned action catalog | Implemented and broker-enforced for action/adapter binding, primitive input/output shapes, policy-risk agreement, and expected verifier identity; per-action resource reductions are not enforced |
+| Isolated analysis worker (pinned Docker image, Semgrep/Bandit adapters, no-network + read-only mount, vulnerable fixture) | Implemented and verified (Change 5), including real-Docker integration tests; runs through the new core `SandboxBackend` protocol with Docker as the only implementation; interim rootful Docker per ADR-023/OQ-006 |
 | Repair and clean-room verifier (patch candidates, disposable workspace, separate-identity verifier, assurance gate) | Implemented and verified (Change 6), including 5 real-Docker end-to-end scenarios (good/exploit-preserving/regression/test-gaming/tampered-evidence) |
+| Model-generated repair | Scoped hosted patch provider and Layer-0 verifier runner implemented; one object-authorization candidate passed clean-room verification; path-traversal response was unchanged and rejected before verification |
 | Runtime attack range (live vulnerable service, benign/attack traffic, normalized telemetry, reversible proxy-rule containment, deployment provenance) | Implemented and verified (Change 7), including real-Docker pre-attack/containment/availability/rollback evidence |
-| Full orchestrated case (approvals, incident states wired to repair/recovery, JSON/human report) | Implemented and verified (Change 8) on stub/replay, including one real-Docker end-to-end incident-to-recovery run reaching `CLOSED`, plus one real-Docker run against a genuinely live local model (Ollama, temporary, see ADR-034) exercising the same path; hosted-provider code exists but is unconfigured for production — no working credential yet, see OQ-004 |
+| Second synthetic scenario (broken object-level authorization) | Fixture, isolated exploit reproduction, and clean-room oracle acceptance/rejection implemented; not integrated into the Aegis incident orchestrator |
+| Full orchestrated cases | Two owned synthetic cases pass through the brokered incident-to-recovery workflow using deterministic test proposals/oracle patches. Containment, candidate build/rollout, and rollback use typed broker transactions; patch verification remains clean-room. No live model-generated patch result exists. |
+| Action transactions, capabilities, verifier coordinator, receipts | Implemented and unit-tested; real Docker commit and failed-rollout rollback acceptance cases pass. In-memory authority/storage; current deployment adapter is range-specific, not production-general. |
+| Behavioral agent monitor | Experimental process-local rule baseline is broker-fed and advisory-only; no learned, calibrated, text, or hidden-state monitor exists. |
+| Evidence correlation | Live Docker full-case requires brokered Semgrep, proxy telemetry, same-case/source-version correlation, and a nonempty evidence-linked hypothesis; persistent evidence retrieval remains planned. |
 | UI | Not implemented |
-| Benchmark results | Only this project's own fixtures (Layer 0) — see `docs/PROGRESS_REPORT.md`; external benchmarks (Layers 1-4) pending OQ-008 |
+| Benchmark results | No standard external benchmark run or headline score. One of two synthetic fixture cases produced a verified model patch; internal tests and this tiny pilot do not establish general coding or cybersecurity ability; see [benchmark status](docs/BENCHMARKS_AND_DATASETS.md). |
 
 No claims in these documents should be read as implementation claims. A feature becomes **implemented** only when code exists, and **verified** only when its acceptance checks pass with recorded evidence.
 
 ## Developer setup
 
-All eight changes in [the implementation handoff](docs/IMPLEMENTATION_HANDOFF.md) are implemented: typed domain schemas, the policy engine and workflow state machine, the provider boundary (stub/replay, plus an unconfigured generic hosted-provider implementation — see OQ-004), the typed tool broker, the isolated analysis worker, the repair/clean-room-verifier pipeline, the runtime attack range, and the full case orchestrator. The default test suite below has no network, model, Docker, or target dependency; the Docker-backed pieces additionally have a real-Docker integration suite (see below), including one full incident-to-recovery run.
+The current codebase includes the original eight cyber-defense implementation slices plus an early transaction coordinator and a live hosted-provider adapter. The default tests need no network, model, or Docker; integration tests exercise real local Docker fixtures. See [progress](docs/PROGRESS_REPORT.md) and [active tasks](docs/ACTIVE_TASKS.md), since this is research-stage software and many long-term runtime/defender capabilities are not implemented.
 
 Requires Python 3.12+. Using [uv](https://docs.astral.sh/uv/) (recommended):
 
@@ -136,7 +156,14 @@ docker build -t aegis-range-proxy:local -f docker/range-proxy/Dockerfile docker/
 
 See `tests/integration/README.md` and `docs/DECISIONS.md` ADR-023 (this project currently uses standard rootful Docker, not rootless, as an owner-accepted interim measure) and ADR-026 (why the verifier image is a separate identity from the analysis-worker image).
 
-`tests/integration/test_live_model_ollama.py` additionally runs the full Change 8 case path against a real local [Ollama](https://ollama.com) model (`qwen2.5:7b`) instead of the stub provider, for temporary local verification that the provider boundary and orchestrator genuinely work with live (non-canned) model output — see ADR-034. It is skipped automatically unless Ollama is running locally with that model pulled (`ollama pull qwen2.5:7b`); it does not resolve OQ-004 (the still-open production hosted-provider decision).
+GitHub Actions CI is configured to run the unit/type/lint/schema checks and the
+synthetic Docker integration suite on ephemeral hosted runners. Workflows use
+read-only repository permissions and receive no model API credentials; live model
+tests are expected to skip when credentials are absent. A remote Actions run has not
+yet been observed from this checkout. Review [the CI threat-model entry](docs/THREAT_MODEL.md)
+before broadening workflow permissions or adding secrets.
+
+The A100 llama.cpp-compatible API is configured locally with alias `qwen38`; the owner corrected a stale `.env.local` after earlier HTTP 401s. A synthetic smoke test succeeded. In the Layer-0 repair pilot, one object-authorization patch passed clean-room verification while the path-traversal response was unchanged and rejected. The model only proposes source; it does not execute actions or approve patches. Keep the server warm and avoid switching aliases. Never put credentials in source, notebooks, command history, or committed files. See [benchmark status](docs/BENCHMARKS_AND_DATASETS.md) for results and exact limits.
 
 ## Authorized defensive use only
 

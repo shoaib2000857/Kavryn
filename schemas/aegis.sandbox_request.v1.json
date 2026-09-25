@@ -1,0 +1,85 @@
+{
+  "additionalProperties": false,
+  "description": "Immutable description of one bounded sandbox execution.",
+  "properties": {
+    "command": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Command",
+      "type": "array"
+    },
+    "cpus": {
+      "exclusiveMinimum": 0,
+      "title": "Cpus",
+      "type": "number"
+    },
+    "image": {
+      "minLength": 1,
+      "title": "Image",
+      "type": "string"
+    },
+    "memory_mb": {
+      "exclusiveMinimum": 0,
+      "title": "Memory Mb",
+      "type": "integer"
+    },
+    "network": {
+      "const": "none",
+      "default": "none",
+      "title": "Network",
+      "type": "string"
+    },
+    "read_only_mounts": {
+      "default": [],
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "string"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Read Only Mounts",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "aegis.sandbox_request/v1",
+      "default": "aegis.sandbox_request/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "timeout_seconds": {
+      "exclusiveMinimum": 0,
+      "title": "Timeout Seconds",
+      "type": "integer"
+    },
+    "user": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "User"
+    }
+  },
+  "required": [
+    "image",
+    "command",
+    "timeout_seconds",
+    "memory_mb",
+    "cpus"
+  ],
+  "title": "SandboxExecutionRequest",
+  "type": "object"
+}

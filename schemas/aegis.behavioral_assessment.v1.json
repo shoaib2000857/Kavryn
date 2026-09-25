@@ -1,0 +1,66 @@
+{
+  "$defs": {
+    "AdvisoryDisposition": {
+      "enum": [
+        "continue",
+        "reduce_autonomy",
+        "human_review",
+        "pause_and_escalate"
+      ],
+      "title": "AdvisoryDisposition",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A bounded-window advisory; it has no authorization semantics.",
+  "properties": {
+    "disposition": {
+      "$ref": "#/$defs/AdvisoryDisposition"
+    },
+    "features": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Features",
+      "type": "object"
+    },
+    "monitor_version": {
+      "default": "aegis.behavioral-monitor/rule-baseline-v1",
+      "title": "Monitor Version",
+      "type": "string"
+    },
+    "observation_count": {
+      "minimum": 1,
+      "title": "Observation Count",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "aegis.behavioral_assessment/v1",
+      "default": "aegis.behavioral_assessment/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "score": {
+      "maximum": 1.0,
+      "minimum": 0.0,
+      "title": "Score",
+      "type": "number"
+    },
+    "signals": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Signals",
+      "type": "array"
+    }
+  },
+  "required": [
+    "disposition",
+    "score",
+    "observation_count",
+    "features",
+    "signals"
+  ],
+  "title": "BehavioralAssessment",
+  "type": "object"
+}

@@ -8,6 +8,7 @@ from aegis.domain.base import ActorRole
 from aegis.domain.case import Case, CaseStatus
 from aegis.domain.policy import PolicyDecision, PolicyOutcome, RiskTier
 from aegis.domain.scope import ActionsPolicy, ScopePolicy
+from aegis.policy.approval import Approval, ApprovalDecision
 from aegis.policy.budget import BudgetUsage
 from aegis.policy.decision import evaluate_action_request
 
@@ -37,6 +38,7 @@ def _evaluate(
     *,
     usage: BudgetUsage | None = None,
     capability_ref: str | None = "capability://AGE-0001/cap-1",
+    approval: Approval | None = None,
 ) -> PolicyDecision:
     return evaluate_action_request(
         request,
@@ -47,6 +49,7 @@ def _evaluate(
         decision_id="dec-0001",
         policy_version="scope-v1",
         capability_ref=capability_ref,
+        approval=approval,
     )
 
 
@@ -66,6 +69,75 @@ def test_approval_required_action_never_carries_a_capability(
     decision = _evaluate(request, case, scope_policy, now)
     assert decision.outcome is PolicyOutcome.APPROVAL_REQUIRED
     assert decision.capability_ref is None
+
+
+def test_approved_action_is_permitted_only_for_exact_request(
+    case: Case, scope_policy: ScopePolicy, now: datetime
+) -> None:
+    request = _request(now, action_type="deployment.rollout")
+    approval = Approval(
+        id="approval-1",
+        case_id=case.id,
+        subject_ref=f"action-request://{case.id}/{request.id}",
+        requested_at=now - timedelta(seconds=1),
+        expires_at=now + timedelta(minutes=5),
+        decision=ApprovalDecision.APPROVED,
+        decided_by="operator:alice",
+        decided_at=now,
+    )
+    decision = _evaluate(request, case, scope_policy, now, approval=approval)
+    assert decision.outcome is PolicyOutcome.PERMITTED
+    assert decision.capability_ref is not None
+    assert "approval was verified" in decision.reasons[0]
+
+
+def test_approval_cannot_be_replayed_for_another_action_or_self_approved(
+    case: Case, scope_policy: ScopePolicy, now: datetime
+) -> None:
+    request = _request(now, action_type="deployment.rollout")
+    approval = Approval(
+        id="approval-2",
+        case_id=case.id,
+        subject_ref=f"action-request://{case.id}/{request.id}",
+        requested_at=now - timedelta(seconds=1),
+        expires_at=now + timedelta(minutes=5),
+        decision=ApprovalDecision.APPROVED,
+        decided_by=request.actor_id,
+        decided_at=now,
+    )
+    decision = _evaluate(request, case, scope_policy, now, approval=approval)
+    assert decision.outcome is PolicyOutcome.DENIED
+    assert "cannot approve its own" in decision.reasons[0]
+
+    wrong_subject = approval.model_copy(
+        update={"subject_ref": f"action-request://{case.id}/different-request"}
+    )
+    decision = _evaluate(
+        request,
+        case,
+        scope_policy,
+        now,
+        approval=wrong_subject,
+    )
+    assert decision.outcome is PolicyOutcome.DENIED
+    assert "exact action request" in decision.reasons[0]
+
+
+def test_expired_approval_is_denied(case: Case, scope_policy: ScopePolicy, now: datetime) -> None:
+    request = _request(now, action_type="deployment.rollout")
+    approval = Approval(
+        id="approval-expired",
+        case_id=case.id,
+        subject_ref=f"action-request://{case.id}/{request.id}",
+        requested_at=now - timedelta(minutes=2),
+        expires_at=now - timedelta(minutes=1),
+        decision=ApprovalDecision.APPROVED,
+        decided_by="operator:alice",
+        decided_at=now - timedelta(minutes=1, seconds=30),
+    )
+    decision = _evaluate(request, case, scope_policy, now, approval=approval)
+    assert decision.outcome is PolicyOutcome.DENIED
+    assert "expired" in decision.reasons[0]
 
 
 def test_denies_on_case_id_mismatch(case: Case, scope_policy: ScopePolicy, now: datetime) -> None:

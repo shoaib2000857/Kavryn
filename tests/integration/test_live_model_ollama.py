@@ -19,23 +19,47 @@ model is not pulled locally; never run in default CI.
 from __future__ import annotations
 
 import difflib
-import socket
+import hashlib
 import subprocess
 import time
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
 
+from aegis.broker.broker import ActionBroker
+from aegis.broker.registry import AdapterRegistry
+from aegis.core.coordinator import ActionTransactionCoordinator
+from aegis.domain.action import ActionRequest
 from aegis.domain.base import Digest
+from aegis.domain.case import Case
 from aegis.domain.policy import RiskTier
+from aegis.domain.scope import (
+    ActionsPolicy,
+    Authorization,
+    Budgets,
+    FilesystemPolicy,
+    NetworkPolicy,
+    ScopePolicy,
+    ServiceTarget,
+    Targets,
+    ToolsPolicy,
+)
+from aegis.evidence.audit import InMemoryAuditSink
+from aegis.evidence.store import InMemoryArtifactStore, sha256_digest
+from aegis.investigation.range import RangeEvidenceInvestigator, make_range_semgrep_adapter
+from aegis.orchestrator.actions import BrokeredDefenderActions
 from aegis.orchestrator.case_runner import CaseDependencies, run_case
+from aegis.policy.approval import Approval, ApprovalDecision
 from aegis.providers.hosted import HostedOpenAICompatibleProvider, HostedProviderConfig
 from aegis.providers.schemas import ToolDescriptor
+from aegis.range.adapter import ProxyRuleAdapter
 from aegis.range.containment import ContainmentRule, write_rules
+from aegis.range.deployment import RangeDeploymentAdapter
+from aegis.range.logs import ProxyLogsAdapter
 from aegis.range.network import create_network, remove_network
-from aegis.range.service import ServiceSpec, start_service, stop_service
+from aegis.range.service import ServiceSpec, container_ip, start_service, stop_service
 from aegis.range.traffic import send_get
 from aegis.repair.candidate import PatchCandidate, changed_files
 from aegis.repair.hashing import hash_source_tree
@@ -128,12 +152,6 @@ def _build_image(dockerfile_dir: Path, tag: str) -> str:
     return result.stdout.strip()
 
 
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
-
-
 def _wait_until_ready(base_url: str, *, attempts: int = 20, delay: float = 0.5) -> None:
     for _ in range(attempts):
         if send_get(base_url, "/download?filename=welcome.txt", timeout=1.0).status_code == 200:
@@ -166,7 +184,6 @@ def running_range(
     remove_network(NETWORK_NAME)
     create_network(NETWORK_NAME)
 
-    host_port = _free_port()
     try:
         start_service(ServiceSpec(image=app_image_id, name=APP_NAME, network=NETWORK_NAME))
         start_service(
@@ -175,11 +192,10 @@ def running_range(
                 name=PROXY_NAME,
                 network=NETWORK_NAME,
                 env={"AEGIS_BACKEND_URL": f"http://{APP_NAME}:8080"},
-                published_port=(host_port, 8081),
                 volumes=((str(rules_dir), "/rules", "ro"),),
             )
         )
-        base_url = f"http://127.0.0.1:{host_port}"
+        base_url = f"http://{container_ip(PROXY_NAME)}:8081"
         _wait_until_ready(base_url)
         yield base_url, str(rules_file)
     finally:
@@ -190,6 +206,8 @@ def running_range(
 
 def test_orchestrator_reaches_closed_using_a_real_local_model(
     running_range: tuple[str, str],
+    app_image_id: str,
+    analysis_worker_image_id: str,
 ) -> None:
     """The containment-proposal step is answered by a real Ollama model,
     not a canned StructuredProposal -- everything downstream (approval,
@@ -216,34 +234,139 @@ def test_orchestrator_reaches_closed_using_a_real_local_model(
         base_repository="path-traversal-v1",
         base_source_digest=hash_source_tree(SRC_DIR),
         diff=diff,
-        diff_digest=Digest(digest="b" * 64),
+        diff_digest=Digest(digest=hashlib.sha256(diff.encode()).hexdigest()),
         files_changed=changed_files(diff),
         root_cause="unsanitized path join allows traversal outside BASE_DIR",
         repair_invariant="resolved path must remain within BASE_DIR",
         generated_at=datetime.now(UTC),
     )
 
+    now = datetime.now(UTC)
+    scope = ScopePolicy(
+        case_id="AGE-0001",
+        version=1,
+        authorization=Authorization(expires_at=now + timedelta(hours=1)),
+        targets=Targets(services=(ServiceTarget(id="demo-api-range", network=NETWORK_NAME),)),
+        network=NetworkPolicy(),
+        filesystem=FilesystemPolicy(),
+        tools=ToolsPolicy(
+            allow=("range.proxy", "range.deployment", "semgrep.scan", "range.proxy.logs")
+        ),
+        actions=ActionsPolicy(
+            auto=("scan.run", "telemetry.read"),
+            approval=(
+                "contain.rate_limit",
+                "contain.rollback",
+                "deployment.rollout",
+                "deployment.rollback",
+            ),
+            deny=("host.shell", "audit.modify"),
+        ),
+        budgets=Budgets(
+            tool_calls=30,
+            model_tokens=100_000,
+            wall_time_seconds=1800,
+            spend_usd=20,
+        ),
+    )
+    case = Case(
+        id="AGE-0001",
+        title="Live-model synthetic path traversal case",
+        created_at=now,
+        created_by="operator:alice",
+        scope_ref="scope://AGE-0001/1",
+        scope_digest=sha256_digest(scope.model_dump_json().encode()),
+    )
+    registry = AdapterRegistry()
+    registry.register(ProxyRuleAdapter(rules_file))
+    registry.register(
+        ProxyLogsAdapter(container_name=PROXY_NAME, target_ref="service://demo-api-range")
+    )
+    artifacts = InMemoryArtifactStore()
+    registry.register(
+        make_range_semgrep_adapter(
+            artifacts=artifacts,
+            fixture_dir=FIXTURE_DIR,
+            analysis_image=analysis_worker_image_id,
+        )
+    )
+    registry.register(
+        RangeDeploymentAdapter(
+            fixture_dir=str(FIXTURE_DIR),
+            source_subdirectory="src",
+            allowed_files=frozenset({"app.py"}),
+            base_source_digest=hash_source_tree(str(SRC_DIR)),
+            base_image=app_image_id,
+            service=ServiceSpec(image=app_image_id, name=APP_NAME, network=NETWORK_NAME),
+            target_ref="service://demo-api-range",
+            rules_file=rules_file,
+            readiness_probe=lambda: (
+                send_get(base_url, "/download?filename=welcome.txt", timeout=1.0).status_code == 200
+            ),
+        )
+    )
+    broker = ActionBroker(
+        registry=registry,
+        audit=InMemoryAuditSink(),
+        artifacts=artifacts,
+    )
+
+    def approve_action(request: ActionRequest) -> Approval:
+        return Approval(
+            id=f"approval-{request.id}",
+            case_id=request.case_id,
+            subject_ref=f"action-request://{request.case_id}/{request.id}",
+            requested_at=now,
+            expires_at=now + timedelta(minutes=5),
+            decision=ApprovalDecision.APPROVED,
+            decided_by="operator:alice",
+            decided_at=now,
+        )
+
+    brokered_actions = BrokeredDefenderActions(
+        coordinator=ActionTransactionCoordinator(broker),
+        case=case,
+        scope=scope,
+        approval_provider=approve_action,
+        policy_version="range-scope-v1",
+        clock=lambda: now,
+    )
+    investigate = RangeEvidenceInvestigator(
+        registry=registry,
+        broker=broker,
+        case=case,
+        scope=scope,
+        artifacts=artifacts,
+        fixture_dir=FIXTURE_DIR,
+        source_dir=SRC_DIR,
+        app_image=app_image_id,
+        app_container=APP_NAME,
+        target_ref="service://demo-api-range",
+        now=now,
+    )
+
     deps = CaseDependencies(
         provider=provider,
+        brokered_actions=brokered_actions,
         exploit_reachable=lambda: (
             send_get(base_url, "/download?filename=../secret.txt").status_code == 200
         ),
-        approve_containment=lambda: True,
-        apply_containment=lambda: write_rules(
-            rules_file, ContainmentRule(deny_query_patterns=(r"\.\.",))
-        ),
-        rollback_containment=lambda: write_rules(rules_file, ContainmentRule()),
         attack_blocked=lambda: (
-            send_get(base_url, "/download?filename=../secret.txt").status_code == 403
+            send_get(base_url, "/download?filename=../secret.txt").status_code in (400, 403, 404)
         ),
         benign_available=lambda: (
             send_get(base_url, "/download?filename=welcome.txt").status_code == 200
         ),
         generate_candidate=lambda: candidate,
         verify_candidate=lambda _candidate: AssuranceOutcome.VERIFIED,
-        approve_deployment=lambda: True,
-        recovery_attack_blocked=lambda: True,
-        recovery_benign_available=lambda: True,
+        deployment_target_ref="service://demo-api-range",
+        recovery_attack_blocked=lambda: (
+            send_get(base_url, "/download?filename=../secret.txt").status_code in (400, 403, 404)
+        ),
+        recovery_benign_available=lambda: (
+            send_get(base_url, "/download?filename=welcome.txt").status_code == 200
+        ),
+        investigate=investigate,
         containment_tools=(
             ToolDescriptor(
                 id="range.proxy",
@@ -267,7 +390,13 @@ def test_orchestrator_reaches_closed_using_a_real_local_model(
     # both are acceptable proof that the provider boundary and orchestrator
     # wiring genuinely work end to end with live (non-canned) model output.
     # An uncaught exception escaping run_case would fail this test regardless.
-    assert trace.final_state in (CaseState.CLOSED, CaseState.CONTAIN_PROPOSAL)
+    assert trace.final_state in (
+        CaseState.CLOSED,
+        CaseState.CONTAIN_PROPOSAL,
+        CaseState.ESCALATED,
+    )
+    if trace.final_state is CaseState.ESCALATED:
+        assert trace.halt_reason is not None
     if trace.final_state is CaseState.CLOSED:
         assert not trace.halted
     else:

@@ -1,0 +1,48 @@
+{
+  "additionalProperties": false,
+  "description": "Observed process result; timeout and process failure remain data.",
+  "properties": {
+    "duration_seconds": {
+      "title": "Duration Seconds",
+      "type": "number"
+    },
+    "exit_code": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Exit Code"
+    },
+    "schema_version": {
+      "const": "aegis.sandbox_result/v1",
+      "default": "aegis.sandbox_result/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stderr": {
+      "title": "Stderr",
+      "type": "string"
+    },
+    "stdout": {
+      "title": "Stdout",
+      "type": "string"
+    },
+    "timed_out": {
+      "title": "Timed Out",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "exit_code",
+    "stdout",
+    "stderr",
+    "timed_out",
+    "duration_seconds"
+  ],
+  "title": "SandboxExecutionResult",
+  "type": "object"
+}

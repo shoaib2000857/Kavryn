@@ -34,10 +34,17 @@ class RequestOutcome(AegisModel):
     body_length: int
 
 
-def send_get(base_url: str, path: str, *, timeout: float = 5.0) -> RequestOutcome:
+def send_get(
+    base_url: str,
+    path: str,
+    *,
+    timeout: float = 5.0,
+    headers: dict[str, str] | None = None,
+) -> RequestOutcome:
     started = time.monotonic()
     try:
-        with urllib.request.urlopen(base_url + path, timeout=timeout) as response:
+        request = urllib.request.Request(base_url + path, headers=headers or {}, method="GET")
+        with urllib.request.urlopen(request, timeout=timeout) as response:
             body = response.read()
             return RequestOutcome(
                 status_code=response.status,

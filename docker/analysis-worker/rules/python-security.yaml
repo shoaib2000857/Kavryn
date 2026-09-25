@@ -23,3 +23,20 @@ rules:
       cwe: "CWE-22"
       references:
         - https://cwe.mitre.org/data/definitions/22.html
+  - id: python-flask-object-authorization
+    languages: [python]
+    severity: ERROR
+    message: >-
+      A document route returns an object without a local owner check against the
+      authenticated principal (CWE-862, missing authorization).
+    patterns:
+      - pattern-inside: |
+          @app.get("/documents/<document_id>")
+          def $HANDLER(...):
+            ...
+      - pattern: return jsonify(...)
+      - pattern-not-inside: |
+          if document["owner"] != g.principal:
+            ...
+    metadata:
+      cwe: "CWE-862"

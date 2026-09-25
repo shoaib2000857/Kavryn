@@ -2,6 +2,136 @@
 
 Accepted decisions guide implementation. Changes require a new entry; do not rewrite history without noting supersession.
 
+## ADR-052 — Scenario-specific range response remains fixed configuration
+
+- **Status:** Accepted (implementation, 2026-09-25).
+- **Decision:** Reuse the reviewed local proxy and case workflow for the object-authorization fixture by configuring a bounded fixed Authorization-header regex that blocks only the synthetic Bob token, while forwarding only the incoming `Authorization` header to the configured backend. Never log the header value. Route-to-source bindings and scenario summaries remain trusted constructor/case configuration; model output cannot supply these settings. The investigation labels configured object routes as heuristic suspicious candidates and still requires a same-source static finding before emitting a hypothesis.
+- **Verification:** `tests/integration/test_full_object_authorization_case.py` demonstrates vulnerable Bob-to-Alice access, brokered approval-gated session containment while Alice retains access, correlated Semgrep evidence, independent clean-room verification of an oracle owner-check patch, brokered rollout, and post-deployment exploit/benign replay. It also asserts the synthetic bearer value is absent from proxy logs. This is a deterministic integration result, not model-generated patch performance.
+- **Security limits:** Authorization forwarding is for the owned synthetic range only; it is not a production identity gateway. Proxy configuration is trusted, regexes are bounded but not formally ReDoS-safe, Docker remains rootful, and the model does not receive a real session credential. Do not reuse this action against arbitrary services.
+- **Rationale:** A path-only deny rule would block legitimate document traffic along with the cross-owner request. The fixture's synthetic session gives the test a narrowly reversible containment control that can be checked for both security and availability before committing.
+
+## ADR-051 — Synthetic range containers use an internal network without published ports
+
+- **Status:** Accepted (implementation, 2026-09-25).
+- **Decision:** Create each local path-traversal range network with Docker `--internal` and inspect it to confirm `Internal=true`, including when a network with the requested name already exists. Do not publish the proxy port. The trusted host resolves the configured proxy container's validated IP address and sends local test/replay requests to that address. App-to-proxy/backend communication remains on the same internal network.
+- **Verification:** Unit tests cover internal-network creation, stale non-internal network rejection, inspect failure, and network-name injection. A real-Docker integration verifies the daemon's internal flag and the full benign/attack/containment/rollback path; a manual disposable probe confirmed the trusted host can reach the proxy by container IP without port publishing.
+- **Security limits:** Docker documents that internal networks restrict external network access but communication with host/gateway services may remain possible, and the host can communicate with container addresses. Rootful Docker remains trusted; this is not a host boundary or production network policy. The currently executed range fixture is intentionally owned; do not infer authorization for arbitrary targets.
+- **Rationale:** The previous default bridge network had ordinary external routing, so the “isolated range” did not enforce the documented no-egress property. On this Docker daemon, publishing the proxy port on an internal network also prevented host-loopback traffic. Reaching the fixed proxy by its internal address preserves local testability without adding a second egress-capable network.
+
+## ADR-050 — Reference-range telemetry reads are fixed broker actions
+
+- **Status:** Accepted (implementation, 2026-09-25).
+- **Decision:** The path-traversal investigator obtains proxy logs through a registered `telemetry.read` action implemented by `range.proxy.logs`. The adapter binds a single configured container and service target, accepts no model-selected parameters, enforces a bounded log tail/output and timeout, declares only observation privilege, and records the request/result through `ActionBroker`. `telemetry.*` is deterministically classified R0; scope must explicitly allow the action and adapter.
+- **Verification:** Adapter tests prove fixed argv/container binding, parameter/target rejection before Docker, output bounding, and timeout-as-non-success. The real Docker full-case test requires both brokered static scan and brokered telemetry and passes a resulting same-case hypothesis to the orchestrator before containment.
+- **Limitations:** Docker log retrieval still accesses the host daemon from trusted adapter code; this does not strengthen daemon isolation. The range-specific investigator, telemetry parser, and in-memory artifact store are not generic or durable, and raw log output remains untrusted data.
+- **Rationale:** Keep all command construction in a typed adapter and make evidence access attributable without exposing container selectors or shell capability to model output.
+
+## ADR-048 — Behavioral trajectory baseline is advisory only
+
+- **Status:** Accepted (experimental implementation, 2026-09-25).
+- **Decision:** The broker records a bounded, process-local trajectory of structured policy outcomes, action identifiers, and deterministic risk tiers. An explainable rule baseline reports denials, repeated denied action types, high-impact requests, and approval-pending events in `BrokerOutcome`. The monitor cannot issue capabilities, change a policy decision, or execute/rollback an action.
+- **Verification:** Focused tests cover low-risk behavior, repeated denials, elevated-risk advisory, bounded history, duplicate-request idempotency, and preservation of broker policy outcomes. The assessment has an exported versioned JSON Schema.
+- **Limitations:** Weights and thresholds are uncalibrated engineering defaults, not probabilities or evidence of early prediction. State is process-local and actor/case-scoped. No text, hidden-state, or future-action prediction is implemented. Deterministic policy remains authoritative.
+- **Rationale:** Land a measurable Stage-A feature baseline without conflating monitoring signals with authorization or claiming validated model-safety performance.
+
+## ADR-049 — Investigation correlation emits hypotheses only
+
+- **Status:** Accepted (deterministic baseline, 2026-09-25).
+- **Decision:** Correlate suspicious normalized range events with scanner findings only when the case matches, an owner-authored literal route-to-relative-source binding matches, and the scan source digest equals the deployed source digest. Output a versioned, content-identified `hypothesis` with references to the raw event artifact, normalized finding digest, and deployment source digest. Scanner messages are not copied into the generated summary.
+- **Verification:** Unit tests cover same-source correlation, benign/unmapped events, digest mismatch, cross-case rejection, path traversal in source paths, and stable evidence-reference shape. The real Semgrep Docker integration now asserts its finding path is normalized relative to the read-only `/src` mount.
+- **Limitations:** This is not causal analysis or a vulnerability confirmation. It is wired into the fixed path-traversal Docker case, but storage/retrieval of normalized finding/provenance records is not generalized or durable. The route binding is trusted configuration and must be reviewed.
+- **Rationale:** Connect independently produced evidence without turning co-occurrence into a claim of causation or allowing runtime telemetry to expand source scope.
+
+## ADR-047 — Registered actions require versioned runtime contracts
+
+- **Status:** Accepted (implementation, 2026-09-25).
+- **Decision:** Every registered adapter must provide a versioned action definition. The catalog binds each action type to exactly one adapter and declares typed primitive inputs/outputs, risk, side effects, permission metadata, resource bounds, rollback linkage, and expected verification. The broker validates action/adapter binding, input fields/types, and policy-risk agreement before capability issuance; successful outputs are checked before being accepted as ordinary execution evidence. The coordinator checks verifier identity against the registered contract.
+- **Verification:** Action-catalog tests cover schema invariants; broker tests cover pre-dispatch parameter rejection and invalid-output control failure; a coordinator test proves an unexpected verifier identity fails closed and rolls back; final-code Docker integration covers full case, containment commit, and failed deployment rollback.
+- **Limitations:** Nested input validation remains adapter-specific; resource metadata is declaration consistency only (not independent CPU/memory enforcement), and retry scheduling is not implemented. Rootful Docker remains an isolation limitation.
+- **Rationale:** Make the allowed action surface explicit and testable without claiming that descriptive metadata alone provides runtime enforcement.
+
+## ADR-046 — Audit chain export is portable evidence, not durable trust
+
+- **Status:** Accepted (initial implementation, 2026-09-25).
+- **Decision:** Export exactly one already-verified case audit chain as deterministic compact JSONL; parse and verify each event digest and predecessor link with a read-only CLI. Reject empty, malformed, mixed-case, reordered, or modified streams.
+- **Verification:** `tests/unit/evidence/test_audit_stream.py` covers deterministic round trips, empty/invalid streams, tampering, ordering, malformed input, and CLI exit status.
+- **Limitations:** The event source remains in-memory. Exported local files are not immutable, writer-authenticated, signed, or externally anchored. A hash chain detects changes relative to the supplied chain but does not establish who created it or prevent replacement of the entire stream.
+- **Rationale:** Make current audit evidence portable and independently checkable without overstating local hash-chain guarantees.
+
+## ADR-040 — Transaction snapshots are single-use broker-owned lifecycle records
+
+- **Status:** Accepted (implementation hardening, 2026-09-25)
+- **Decision:** `ActionBroker` reserves each transaction identifier atomically, serializes state transitions under a lock, and rejects stale or reused transaction snapshots before a second adapter dispatch. Broker-owned lifecycle comparison intentionally ignores evidence references attached by the coordinator while requiring case/request/scope/policy/state/history to match.
+- **Verification:** a unit test submits the same transaction id twice and confirms the second request raises before another tool call; broker/coordinator unit tests and both real Docker transaction acceptance cases pass.
+- **Limitations:** this is an in-process concurrency/replay guard, not durable idempotency or a distributed transaction protocol. A process restart loses the transaction registry, and the current effect adapters are not crash-consistent.
+- **Rationale:** a typed capability and action request are insufficient if the same broker can race or replay an issued transaction. The initial runtime must make transaction identity and transitions authoritative before later adding persistent storage or remote workers.
+
+## ADR-041 — External benchmark scores require runnable harness, authorized inference, and adequate resources
+
+- **Status:** Accepted (evaluation boundary, 2026-09-25)
+- **Decision:** Do not start SWE-bench's local Docker run below its published storage recommendation, AutoPatchBench sample-20 below its published recommendation, or Vul4J without its required JDK matrix. Do not call internal fixture tests standard-benchmark results. A hosted HTTP 401 is reported as infrastructure failure, not model failure or a score.
+- **Evidence:** the current host has about 52 GB free and Java 26 only; the official SWE-bench Docker setup guide recommends at least 120 GB free, the AutoPatchBench docs recommend about 500 GB for sample-20, and the Vul4J repository lists Java 7/8/11/16 requirements. Two qwen38 patch-pilot attempts returned HTTP 401 before candidate generation.
+- **Rationale:** partial downloads, failed setup, or an unavailable model cannot produce a defensible capability score and could consume storage without useful output. Resume only after endpoint authorization and benchmark-specific runtime/storage preflight are satisfied.
+
+## ADR-042 — Case-orchestrator containment must use the brokered transaction runtime
+
+- **Status:** Accepted (implementation boundary, 2026-09-25)
+- **Decision:** `CaseDependencies` no longer exposes direct containment approval/apply/rollback callables. A `BrokeredDefenderActions` bridge converts the allowlisted proposal into a fixed typed apply request, asks the approval provider for an attributable approval record, and delegates execution, verification, rollback, audit, and receipt creation to the transaction coordinator. Model-provided containment parameters are rejected; the registered action catalog supplies the operation parameters.
+- **Verification:** the actual full-case Docker integration uses this route; its legacy callback fallback is absent. Unit orchestration tests use the same coordinator with an L0 mock adapter, while real-range integration covers commit and rollback.
+- **Rationale:** retaining an optional direct-effect path would make the runtime boundary advisory rather than authoritative. This change closes the containment/rollback bypass but does not claim the whole case is broker-only: deployment, candidate-image build, and some recovery effects remain open work.
+
+## ADR-043 — The reference range deploys through a fixed, brokered Docker adapter
+
+- **Status:** Accepted for the local synthetic path-traversal range only (2026-09-25).
+- **Decision:** Replace the deployment approval callback and hidden Docker mutation inside a recovery probe with typed `deployment.rollout` and `deployment.rollback` requests handled by `RangeDeploymentAdapter`. The adapter is constructed with a fixed fixture, service, network, source root, allowed file set, and containment state path. A request carries only the candidate diff and digests; it cannot select arbitrary image/container names or commands. The adapter checks the trusted source and candidate-diff digests, builds a temporary context containing only the Dockerfile, requirements, and source, uses `docker build --network=none`, replaces only the configured service, waits for readiness, and preserves the prior image/rule state for rollback. The broker descriptor explicitly declares the Docker-control privilege.
+- **Verification:** unit tests reject wrong target references, modified diffs, and out-of-scope paths before execution. The Docker full-case integration passes through brokered rollout. A second real-range integration applies a valid comment-only patch that leaves the exploit reachable; independent postcondition failure prevents commit, the broker executes rollback, and attack/benign probes confirm the original contained state is restored. A clean integration rerun passed **20 tests, 1 credential-gated skip**; the unit suite passed **388 tests**.
+- **Security limits:** this is not a general or production deployment adapter. It still invokes the rootful host Docker daemon from trusted adapter code; Docker build networking is disabled, but no microVM/hardened hostile-build boundary or effective CPU/memory quota is established here. The adapter's prior image/containment rollback state is process-local. No Docker socket or generic command interface is exposed to the model.
+- **Rationale:** deployment was a concrete direct-effect bypass in the reference case. Making it a typed adapter brings policy, approval, capability, audit, transaction, and independent verification into one path without pretending Docker control is safe for arbitrary targets.
+
+## ADR-044 — One-shot worker execution depends on a core sandbox backend protocol
+
+- **Status:** Accepted as an initial dependency-inversion step (2026-09-25).
+- **Decision:** Define versioned domain-neutral `SandboxExecutionRequest`, `SandboxExecutionResult`, and the `SandboxBackend` protocol in `aegis.core.sandbox`; export both v1 JSON Schemas. Move the one-shot analysis worker's existing Docker command construction and timeout/result handling behind `DockerSandboxBackend.execute`; `run_container` delegates to an injected backend or the Docker default. Preserve the old `ContainerRunSpec`/`ContainerRunResult` names as aliases for compatibility. Add a static test preventing core imports from range/orchestrator/telemetry/repair/verifier/worker/tool/provider packages and a protocol-delegation test.
+- **Verification:** 392 default unit tests pass; the core import-boundary/schema tests pass; 4 real-Docker analysis-worker integration tests pass; Ruff, strict mypy, all 13 exported schemas, and formatting checks pass.
+- **Limitations:** only one-shot analysis execution is behind this protocol. Range deployment/service/network lifecycle still invokes Docker-specific adapters/helpers. Docker remains rootful, no alternate backend exists, and the protocol provides no sandbox security by itself.
+- **Rationale:** establish a replaceable runtime boundary without prematurely implementing gVisor/Firecracker or moving cyber-specific range behavior into the reusable core.
+
+## ADR-045 — Independent postcondition checks use a verifier protocol
+
+- **Status:** Accepted (2026-09-25).
+- **Decision:** `aegis.core.coordinator.Verifier` is a runtime-checkable protocol with `verify(transaction, result, checked_at=...) -> VerificationOutcome`. The coordinator dispatches protocol implementations through `.verify()` and retains two-argument callable support for existing deterministic tests and range probes; verifier exception and actor-separation rules apply identically to both forms.
+- **Verification:** an object-based verifier test exercises the protocol through a real broker/coordinator unit path and checks the control-supplied timestamp; callable-based commit, failed-verifier, and rollback tests remain in place. Final full rerun: **393 unit tests passed; 20 integrations passed and one credential-gated hosted-model test was skipped**.
+- **Rationale and limitation:** a typed object boundary supports independent verifier implementations while allowing incremental migration. This does not establish process isolation: current verification callbacks can execute in-process, while the patch clean-room verifier remains the separate Docker-based verification path.
+
+## ADR-036 — Evolve toward a reusable transactional agent-execution runtime
+
+- **Status:** Accepted (owner direction, 2026-09-25)
+- **Decision:** The flagship direction is a domain-neutral runtime that governs consequential agent execution rather than prescribing cognition or replacing agent-loop frameworks. Cyber defense remains the first reference application. Actions should move toward `PROPOSE -> AUTHORIZE -> EXECUTE -> OBSERVE -> VERIFY -> COMMIT/ROLL BACK -> RECEIPT` semantics.
+- **Rationale:** This preserves the project's differentiated control, evidence, and verification work while allowing external model and orchestration systems to use it. It explicitly remains independent of hackathon requirements. Do not rename the repository yet; the public name is still an open owner choice.
+- **Boundary:** This is a roadmap architecture, not a claim that generic transactions, rollback, SDK interoperability, or production safety are complete.
+
+## ADR-037 — A100 OpenAI-compatible endpoint for live development trials
+
+- **Status:** Accepted (owner-authorized, 2026-09-25)
+- **Decision:** Use the owner's llama.cpp-compatible A100 API endpoint through `HostedOpenAICompatibleProvider`, defaulting to model alias `qwen38` for the current development session. Credentials are supplied only through `LLM_API_KEY`; URL and model are environment configuration. Do not cycle among model aliases without a concrete evaluation need because the server offloads/reloads models on switches. The existing stub/replay path remains the deterministic test default.
+- **Verified:** One typed synthetic-range API smoke test returned a schema-valid proposal, and one Docker-backed path-traversal case reached `CLOSED` using live hosted reasoning for the containment proposal. No other model aliases were tested. The model did not generate the repair patch, and this does not establish general cyber-defense performance.
+- **Data boundary:** Only synthetic local-range context was sent during these trials. Real private repository contents/logs are not authorized for transmission by this decision.
+- **Secret handling:** No key is stored in the repository. The key was pasted into chat; rotate it after this session and use environment/secret storage going forward.
+
+## ADR-038 — First transaction/capability implementation is process-local and non-committing
+
+- **Status:** Accepted (implementation boundary, 2026-09-25)
+- **Decision:** Add immutable `ActionTransaction` records with explicit legal transitions and a thread-safe in-memory `CapabilityAuthority` that enforces expiry, one-use, case, transaction, actor, action, adapter, target, and parameter bindings. Integrate issuance/consumption and transaction-state audit events into `ActionBroker`. Broker completion ends at `EXECUTED` or `FAILED`; it cannot mark an action committed without independent postcondition verification.
+- **Limitations:** The authority is process-local, unsigned, and not a boundary against a compromised runtime process. `scope_digest` and risk are carried in the grant for attribution, while authorization still depends on the deterministic policy check before issuance. A generalized verifier/approval/rollback transaction coordinator, receipt-to-transaction factory, and external audit anchoring remain unimplemented.
+- **Rationale:** Provide a real, testable narrow capability lifecycle without pretending the current in-process implementation is a hardened multi-process security boundary.
+
+## ADR-039 — Model-generated patch candidates remain untrusted and verifier-gated
+
+- **Status:** Accepted (implementation boundary, 2026-09-25)
+- **Decision:** Add a separate typed patch-generation boundary for the synthetic path-traversal fixture. It receives only an explicitly allowlisted source file and task summary, returns a structured unified diff, and locally rejects malformed or out-of-scope changes before constructing a content-hashed `PatchCandidate`. A separate clean-room verifier remains responsible for the pass/reject decision; the model cannot execute, deploy, or approve its patch.
+- **Verification:** Provider unit tests cover content hashing, source-only context, additional-field rejection, malformed JSON, and disallowed changed-file rejection. A real qwen38 Layer-0 repair-pilot attempt was made on 2026-09-25 and received HTTP 401 before candidate generation; it produced no patch-quality evidence. The attempt is recorded in `artifacts/benchmark_runs/`.
+- **Rationale and scope:** This creates a real code-repair model task without turning the model into an executor or exposing hidden tests. It is a synthetic fixture pilot, not a standard benchmark or general coding claim. External/private source transmission remains unauthorized.
+
 ## ADR-001 — Independent research project
 
 - **Status:** Accepted

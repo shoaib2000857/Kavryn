@@ -97,11 +97,16 @@ def test_semgrep_adapter_finds_something_in_the_real_vulnerable_fixture(
         allowed_source_root=str(FIXTURE_DIR),
         image_ref=pinned_image_id,
     )
-    result = adapter.run(_request(), capability_ref="capability://AGE-0001/cap-1")
+    result = adapter.run(
+        _request(parameters={"source_dir": str(FIXTURE_DIR / "src")}),
+        capability_ref="capability://AGE-0001/cap-1",
+    )
     assert result.exit_status == "success"
     findings = result.output["findings"]
     assert isinstance(findings, list)
-    assert any("path-traversal" in f["rule_id"] for f in findings), findings
+    assert any("path-traversal" in f["rule_id"] and f["file"] == "app.py" for f in findings), (
+        findings
+    )
 
 
 def test_bandit_adapter_flags_the_known_vulnerability(pinned_image_id: str) -> None:

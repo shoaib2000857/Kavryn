@@ -1,0 +1,357 @@
+{
+  "$defs": {
+    "ActionRequest": {
+      "additionalProperties": false,
+      "description": "A structured request from the reasoning plane to the action broker.",
+      "properties": {
+        "action_type": {
+          "maxLength": 128,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "actor_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "adapter": {
+          "maxLength": 128,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+          "title": "Adapter",
+          "type": "string"
+        },
+        "case_id": {
+          "maxLength": 64,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "expected_evidence": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Expected Evidence",
+          "type": "array"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": true,
+          "title": "Parameters",
+          "type": "object"
+        },
+        "reason": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "requested_at": {
+          "format": "date-time",
+          "title": "Requested At",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/ActorRole"
+        },
+        "schema_version": {
+          "const": "aegis.action_request/v1",
+          "default": "aegis.action_request/v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "target_ref": {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "title": "Target Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "case_id",
+        "actor_id",
+        "role",
+        "action_type",
+        "target_ref",
+        "adapter",
+        "reason",
+        "requested_at"
+      ],
+      "title": "ActionRequest",
+      "type": "object"
+    },
+    "ActorRole": {
+      "description": "Who is acting, for the authorization tuple in docs/CONTROL_PLANE.md.",
+      "enum": [
+        "operator",
+        "reasoning_runtime",
+        "worker",
+        "control_plane",
+        "system"
+      ],
+      "title": "ActorRole",
+      "type": "string"
+    },
+    "Digest": {
+      "additionalProperties": false,
+      "description": "A content hash used to content-address an artifact or record.\n\nOnly sha256 is accepted for this change; widening the algorithm set\nlater is additive and does not require a schema version bump.",
+      "properties": {
+        "algorithm": {
+          "default": "sha256",
+          "pattern": "^sha256$",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest"
+      ],
+      "title": "Digest",
+      "type": "object"
+    },
+    "TransactionState": {
+      "enum": [
+        "proposed",
+        "policy_checked",
+        "denied",
+        "awaiting_approval",
+        "authorized",
+        "capability_issued",
+        "staged",
+        "executing",
+        "executed",
+        "verifying",
+        "verified",
+        "failed",
+        "rolling_back",
+        "rolled_back",
+        "committed",
+        "escalated",
+        "control_failure"
+      ],
+      "title": "TransactionState",
+      "type": "string"
+    },
+    "TransactionTransition": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "from_state": {
+          "$ref": "#/$defs/TransactionState"
+        },
+        "reason": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "to_state": {
+          "$ref": "#/$defs/TransactionState"
+        }
+      },
+      "required": [
+        "from_state",
+        "to_state",
+        "at",
+        "reason"
+      ],
+      "title": "TransactionTransition",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Immutable snapshot of one proposed consequential action.",
+  "properties": {
+    "action_request": {
+      "$ref": "#/$defs/ActionRequest"
+    },
+    "approval_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Approval Ref"
+    },
+    "capability_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Capability Ref"
+    },
+    "case_id": {
+      "maxLength": 64,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "environment_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Environment Ref"
+    },
+    "evidence_refs": {
+      "default": [],
+      "items": {
+        "maxLength": 2048,
+        "minLength": 3,
+        "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+        "type": "string"
+      },
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "input_artifacts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Digest"
+      },
+      "title": "Input Artifacts",
+      "type": "array"
+    },
+    "output_artifacts": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/Digest"
+      },
+      "title": "Output Artifacts",
+      "type": "array"
+    },
+    "policy_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "reversible": {
+      "default": false,
+      "title": "Reversible",
+      "type": "boolean"
+    },
+    "rollback_ref": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rollback Ref"
+    },
+    "schema_version": {
+      "const": "aegis.action_transaction/v1",
+      "default": "aegis.action_transaction/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "state": {
+      "$ref": "#/$defs/TransactionState",
+      "default": "proposed"
+    },
+    "transitions": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/TransactionTransition"
+      },
+      "title": "Transitions",
+      "type": "array"
+    },
+    "updated_at": {
+      "format": "date-time",
+      "title": "Updated At",
+      "type": "string"
+    },
+    "verification_refs": {
+      "default": [],
+      "items": {
+        "maxLength": 2048,
+        "minLength": 3,
+        "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+        "type": "string"
+      },
+      "title": "Verification Refs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "case_id",
+    "action_request",
+    "scope_digest",
+    "policy_version",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "ActionTransaction",
+  "type": "object"
+}

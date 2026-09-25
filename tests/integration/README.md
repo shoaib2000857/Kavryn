@@ -1,7 +1,11 @@
 # Integration tests
 
 These tests require a working Docker daemon and the pinned analysis
-worker image built from `docker/analysis-worker/Dockerfile`. They are
+worker image built from `docker/analysis-worker/Dockerfile` and verifier image
+built from `docker/verifier/Dockerfile`. The owned object-authorization fixture
+test also builds its local pinned Python image;
+that image build installs the pinned Flask dependency from the configured
+package index. They are
 excluded from the default `pytest -q` run (`tool.pytest.ini_options.testpaths`
 is `tests/unit`) because they are slower and depend on host
 infrastructure that a fast unit-test loop or CI-without-Docker should

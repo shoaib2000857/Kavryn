@@ -20,6 +20,10 @@
         "case_closed",
         "action_requested",
         "policy_decision_recorded",
+        "approval_recorded",
+        "transaction_transition_recorded",
+        "capability_issued",
+        "capability_revoked",
         "evidence_recorded",
         "tool_run_recorded"
       ],

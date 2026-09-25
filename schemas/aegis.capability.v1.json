@@ -1,0 +1,154 @@
+{
+  "$defs": {
+    "Digest": {
+      "additionalProperties": false,
+      "description": "A content hash used to content-address an artifact or record.\n\nOnly sha256 is accepted for this change; widening the algorithm set\nlater is additive and does not require a schema version bump.",
+      "properties": {
+        "algorithm": {
+          "default": "sha256",
+          "pattern": "^sha256$",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest"
+      ],
+      "title": "Digest",
+      "type": "object"
+    },
+    "RiskTier": {
+      "description": "Risk tiers from docs/CONTROL_PLANE.md, assigned by policy, not the model.",
+      "enum": [
+        "r0_observe",
+        "r1_analyze",
+        "r2_validate",
+        "r3_reversible_response",
+        "r4_change",
+        "r5_high_impact"
+      ],
+      "title": "RiskTier",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A narrowly bound authorization grant for one transaction/action.",
+  "properties": {
+    "action_type": {
+      "maxLength": 128,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "title": "Action Type",
+      "type": "string"
+    },
+    "adapter": {
+      "maxLength": 128,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*)+$",
+      "title": "Adapter",
+      "type": "string"
+    },
+    "case_id": {
+      "maxLength": 64,
+      "minLength": 3,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Case Id",
+      "type": "string"
+    },
+    "expires_at": {
+      "format": "date-time",
+      "title": "Expires At",
+      "type": "string"
+    },
+    "id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "issued_at": {
+      "format": "date-time",
+      "title": "Issued At",
+      "type": "string"
+    },
+    "issuer": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Issuer",
+      "type": "string"
+    },
+    "max_uses": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Max Uses",
+      "type": "integer"
+    },
+    "parameters_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Parameters Digest",
+      "type": "string"
+    },
+    "risk_tier": {
+      "$ref": "#/$defs/RiskTier"
+    },
+    "schema_version": {
+      "const": "aegis.capability/v1",
+      "default": "aegis.capability/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_digest": {
+      "$ref": "#/$defs/Digest"
+    },
+    "single_use": {
+      "default": true,
+      "title": "Single Use",
+      "type": "boolean"
+    },
+    "subject": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Subject",
+      "type": "string"
+    },
+    "target_ref": {
+      "maxLength": 2048,
+      "minLength": 3,
+      "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+      "title": "Target Ref",
+      "type": "string"
+    },
+    "transaction_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Transaction Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "issuer",
+    "subject",
+    "case_id",
+    "transaction_id",
+    "scope_digest",
+    "action_type",
+    "adapter",
+    "target_ref",
+    "risk_tier",
+    "parameters_digest",
+    "issued_at",
+    "expires_at"
+  ],
+  "title": "Capability",
+  "type": "object"
+}

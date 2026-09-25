@@ -20,10 +20,18 @@ __all__ = ["ContainmentRule", "read_rules", "write_rules"]
 
 class ContainmentRule(AegisModel):
     deny_query_patterns: tuple[str, ...] = ()
+    deny_authorization_patterns: tuple[str, ...] = ()
 
 
 def write_rules(path: str, rule: ContainmentRule) -> None:
-    Path(path).write_text(json.dumps({"deny_query_patterns": list(rule.deny_query_patterns)}))
+    Path(path).write_text(
+        json.dumps(
+            {
+                "deny_query_patterns": list(rule.deny_query_patterns),
+                "deny_authorization_patterns": list(rule.deny_authorization_patterns),
+            }
+        )
+    )
 
 
 def read_rules(path: str) -> ContainmentRule:
@@ -32,6 +40,17 @@ def read_rules(path: str) -> ContainmentRule:
     except (OSError, json.JSONDecodeError):
         return ContainmentRule()
     patterns = data.get("deny_query_patterns") if isinstance(data, dict) else None
-    if not isinstance(patterns, list):
+    authorization_patterns = (
+        data.get("deny_authorization_patterns", []) if isinstance(data, dict) else []
+    )
+    if (
+        not isinstance(patterns, list)
+        or any(not isinstance(pattern, str) for pattern in patterns)
+        or not isinstance(authorization_patterns, list)
+        or any(not isinstance(pattern, str) for pattern in authorization_patterns)
+    ):
         return ContainmentRule()
-    return ContainmentRule(deny_query_patterns=tuple(str(p) for p in patterns))
+    return ContainmentRule(
+        deny_query_patterns=tuple(patterns),
+        deny_authorization_patterns=tuple(authorization_patterns),
+    )

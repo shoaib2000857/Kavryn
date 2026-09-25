@@ -25,6 +25,9 @@ def render_json_report(trace: CaseTrace) -> str:
         "halt_reason": trace.halt_reason,
         "states": [state.value for state in trace.states],
         "notes": list(trace.notes),
+        "investigation": (
+            trace.investigation.model_dump(mode="json") if trace.investigation is not None else None
+        ),
     }
     return json.dumps(payload, indent=2)
 
@@ -39,4 +42,12 @@ def render_human_report(trace: CaseTrace) -> str:
     lines.append("## Timeline")
     for state, note in zip(trace.states, trace.notes, strict=True):
         lines.append(f"- `{state.value}` — {note}")
+    if trace.investigation is not None:
+        lines.extend(("", "## Investigation hypotheses"))
+        for hypothesis in trace.investigation.hypotheses:
+            lines.append(
+                f"- `{hypothesis.id}` — {hypothesis.summary} "
+                f"(finding: {hypothesis.finding_tool}/{hypothesis.finding_rule_id} "
+                f"at {hypothesis.source_file}:{hypothesis.source_line})"
+            )
     return "\n".join(lines) + "\n"

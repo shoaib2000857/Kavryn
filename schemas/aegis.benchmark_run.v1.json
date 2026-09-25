@@ -1,0 +1,299 @@
+{
+  "$defs": {
+    "AgentMode": {
+      "enum": [
+        "hosted_model",
+        "local_model",
+        "scripted",
+        "oracle",
+        "replay"
+      ],
+      "title": "AgentMode",
+      "type": "string"
+    },
+    "BenchmarkAxis": {
+      "additionalProperties": false,
+      "properties": {
+        "metrics": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/BenchmarkMetric"
+          },
+          "title": "Metrics",
+          "type": "array"
+        }
+      },
+      "title": "BenchmarkAxis",
+      "type": "object"
+    },
+    "BenchmarkMetric": {
+      "additionalProperties": false,
+      "description": "One raw metric and its measurement provenance.",
+      "properties": {
+        "evidence_refs": {
+          "default": [],
+          "items": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "method": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Method",
+          "type": "string"
+        },
+        "metric_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9_.-]*$",
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "status": {
+          "$ref": "#/$defs/MetricStatus"
+        },
+        "unit": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "metric_id",
+        "status",
+        "unit",
+        "method"
+      ],
+      "title": "BenchmarkMetric",
+      "type": "object"
+    },
+    "MetricStatus": {
+      "enum": [
+        "measured",
+        "unavailable",
+        "not_applicable"
+      ],
+      "title": "MetricStatus",
+      "type": "string"
+    },
+    "RunOutcome": {
+      "enum": [
+        "completed",
+        "failed",
+        "infrastructure_error",
+        "invalid_agent_output"
+      ],
+      "title": "RunOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Reproducible run metadata and three independent metric dimensions.",
+  "properties": {
+    "agent_mode": {
+      "$ref": "#/$defs/AgentMode"
+    },
+    "benchmark_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Benchmark Id",
+      "type": "string"
+    },
+    "benchmark_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Benchmark Version",
+      "type": "string"
+    },
+    "capability": {
+      "$ref": "#/$defs/BenchmarkAxis"
+    },
+    "control_safety": {
+      "$ref": "#/$defs/BenchmarkAxis"
+    },
+    "dataset_digest": {
+      "anyOf": [
+        {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Dataset Digest"
+    },
+    "duration_seconds": {
+      "minimum": 0,
+      "title": "Duration Seconds",
+      "type": "number"
+    },
+    "efficiency": {
+      "$ref": "#/$defs/BenchmarkAxis"
+    },
+    "finish_reason": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finish Reason"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "outcome": {
+      "$ref": "#/$defs/RunOutcome"
+    },
+    "prompt_version": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Prompt Version"
+    },
+    "provider": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Provider"
+    },
+    "repository_revision": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Repository Revision"
+    },
+    "run_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "scenario_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Scenario Id",
+      "type": "string"
+    },
+    "scenario_version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Scenario Version",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "aegis.benchmark_run/v1",
+      "default": "aegis.benchmark_run/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "working_tree_dirty": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Working Tree Dirty"
+    }
+  },
+  "required": [
+    "run_id",
+    "benchmark_id",
+    "benchmark_version",
+    "scenario_id",
+    "scenario_version",
+    "agent_mode",
+    "started_at",
+    "duration_seconds",
+    "outcome",
+    "capability",
+    "control_safety",
+    "efficiency"
+  ],
+  "title": "BenchmarkRunRecord",
+  "type": "object"
+}

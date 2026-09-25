@@ -1,5 +1,98 @@
 # Worklog
 
+## 2026-09-25 — object-authorization end-to-end case integration
+
+- Added a second deterministic, real-Docker incident-to-recovery path using `run_case`: replay a synthetic Bob-to-Alice document request; broker Semgrep and proxy telemetry; correlate `/documents` to `app.py`; obtain attributed approval; temporarily deny only the synthetic Bob token while Alice can still read her own document; verify a known oracle owner-check patch in the clean-room container; deploy through `deployment.rollout`; then confirm cross-owner replay returns 404 and owner access remains 200.
+- Added an offline Semgrep CWE-862 rule for the fixture. The full integration asserts that this finding is in the evidence-linked hypothesis and that the synthetic Authorization value is not present in proxy logs. The fixed proxy forwards only the Authorization header to its configured backend; rule selection remains trusted config, not model input.
+- Generalized `send_get` for test-only request headers, added route-prefix suspicious-candidate classification, extended the fixed proxy rule format with bounded Authorization matchers, and exempted only `/healthz` from the fixture's synthetic-auth middleware for readiness checks.
+- Verification: focused full second-scenario integration **1 passed** (23.90s initial; 13.61s with the extra evidence assertions); full unit suite **487 passed**; full Docker suite **23 passed, 1 credential-gated live-model test skipped** (152.39s); Ruff lint/format (**216 files**), strict mypy (**178 source files**), 18 schemas, and diff checks passed.
+- This validates one deterministic scenario workflow; the generated patch is an oracle fixture, not model output. It does not establish generalized auth handling, production proxy behavior, or external benchmark performance. Header-forwarding/configuration limitations are documented in ADR-052/T24. No external credential, public target, or new egress path was introduced; the local image build may use the configured package index as documented.
+
+## 2026-09-25 — configurable local-range response hooks
+
+- Made `ProxyRuleAdapter` accept bounded, owner-configured fixed regex rules and a rule-set identifier. The model still cannot submit a regex or change adapter configuration; malformed, empty, and overlong rules are rejected. Existing default behavior remains the traversal-deny rule.
+- Made `RangeEvidenceInvestigator` accept trusted route-to-source bindings and let `CaseDependencies` provide a scenario-specific incident summary instead of hard-coding traversal language.
+- Added unit checks for custom object-route containment config and invalid config; updated the active task list, tools/sandbox docs, and fixture README.
+- Verification: unit suite **485 passed**; full Docker integration **22 passed, 1 hosted-model test skipped** (137.94 seconds); Ruff lint/format, strict mypy (**177 source files**), **18 schemas**, and diff checks passed.
+- Historical note: this initial hook-only slice did not wire object authorization through the complete case orchestrator. The following worklog entry records that now-passing deterministic integration. A generic response/deployment backend and model repair result remain open.
+
+## 2026-09-25 — second-scenario clean-room repair profile
+
+- Extended `scripts/bench_patch_repair.py` with an explicit `--scenario` allowlist for the path-traversal and object-authorization fixtures. Each request binds to that fixture's exact source digest and sends only its `app.py` plus a scenario-specific vulnerability summary; hidden tests are still only mounted into the verifier.
+- Added an independent clean-room acceptance/rejection integration pair for object authorization. A locally constructed owner-check patch passes public, hidden exploit-replay, and regression groups; a comment-only patch that leaves cross-owner access fails verification and the assurance gate. No model was called.
+- The first verification attempt surfaced that the gate requires public, exploit-replay, and regression test groups. Rather than weaken the gate, split the hidden fixture oracles into the expected test groups; the corrected integration now passes.
+- Verification: focused second-scenario integration **2 passed**; unit suite **480 passed**; full Docker suite **22 passed, 1 credential-gated skip** (139.67s); CLI help lists both fixtures; Ruff, formatting (214 files), strict mypy (176 source files), 18 schemas, and diff checks passed.
+- Scope: this verifies that the clean-room repair machinery can assess one second vulnerability class. It does not integrate incident investigation, brokered containment, or deployment for that class, and it is not a standard benchmark or live model-patch result.
+- No new secrets or runtime network routes. The test builds the existing pinned verifier and fixture images through Docker; the fixture image downloads the pinned Flask package at build time, while the runtime container remains network-disabled.
+
+## 2026-09-25 — second owned cyber-range fixture
+
+- Added `ranges/object-authorization-v1`, a minimal authenticated synthetic document service with an intentional missing object-owner authorization check (CWE-862/CWE-639), owner-access public tests, and verifier-only cross-owner/identity cases.
+- Added an optional Docker integration that builds the fixture and reproduces cross-owner document access solely with Flask's in-process test client inside a disposable container (`--network none`, read-only root, dropped capabilities, no-new-privileges, memory/CPU/PID limits). Focused result: **1 passed in 13.02s**; full unit suite **480 passed**; full Docker suite **21 passed, 1 credential-gated skip** (134.46s); Ruff, strict mypy (176 source files), 18 schema checks, formatting, and diff checks passed.
+- The fixture is not wired to the Aegis evidence correlator, broker actions, patch provider, or clean-room verifier. It is a second owned scenario artifact, not a supported second end-to-end defense path or a benchmark score. The build installs pinned Flask from the configured package index; no network is available to the runtime container.
+- Updated README, benchmark/active-task/progress/threat-model docs, and integration setup notes. No credentials or new runtime network routes were introduced; the existing Docker daemon remains rootful/trusted.
+
+## 2026-09-25 — Broker-level prompt-injection control regression
+
+- Added two adversarial regression tests: one submits an explicitly denied `host.shell` request carrying instruction-like poisoned evidence, and one feeds a provider proposal for `host.shell` through the case orchestrator. The broker denies it before adapter dispatch; the case halts and escalates before entering containment.
+- Verification: focused command `uv run pytest -q tests/unit/broker/test_broker.py::test_injected_host_shell_proposal_is_denied_before_adapter_dispatch tests/unit/orchestrator/test_case_runner.py::test_prompt_injected_high_impact_proposal_is_blocked_by_broker` — **2 passed**. Full unit suite then passed **480 tests**; Ruff check/format, strict mypy (175 source files), schema parity (18 schemas), and `git diff --check` passed.
+- Requirement satisfied: demonstrate that untrusted text/model proposals cannot grant authority to an explicitly denied action. This is not evidence of general model prompt-injection robustness; poisoned repository, telemetry, and tool-output suites are still needed.
+- Files changed: `tests/unit/broker/test_broker.py`, `tests/unit/orchestrator/test_case_runner.py`, `docs/ACTIVE_TASKS.md`, `docs/THREAT_MODEL.md`, `docs/PROGRESS_REPORT.md`, `docs/WORKLOG.md`.
+- No permissions, tools, network paths, or secrets were introduced. Threat-model effect is improved denial coverage only; current rootful-Docker and hosted-provider limitations are unchanged.
+
+## 2026-09-25 — Vul4Py artifact provenance and safety preflight
+
+- Located candidate `https://github.com/tabudz/vul4py` at commit `2649d7b89e796738ebc2bc3fa9480dff5ae15898`. Its README describes 100 Python cases with vulnerable/fixed checkouts plus functional and exploit test sets, consistent with the paper's benchmark design.
+- GitHub repository metadata reports no license (`license: null`; `/license` returns 404). The primary paper and author publication page do not link this repository, so provenance is not established by the inspected sources. The paper itself describes the benchmark and paired oracles: https://arxiv.org/abs/2608.00692.
+- Static review (no execution) found metadata-driven install/test commands run via `shell=True`, dynamic repository clones, and micromamba bootstrap downloads. The candidate harness has no evident case sandbox. No source cases were cloned and no benchmark command was run.
+- Current-environment decision: do not run the candidate harness under rootful-Docker-only isolation; do not copy/redistribute its code without terms. A separate Aegis runner may be designed after provenance/terms and a compliant isolation boundary are established. Updated benchmark matrix, OQ-008, source registry, progress report, and active task list.
+- No credentials, permissions, tools, or network paths were added. This is a metadata/code-review preflight, not benchmark performance evidence.
+
+## 2026-09-25 — local range service launch validation
+
+- Tightened `ServiceSpec` validation before range service argv construction: simple Docker image-reference syntax, safe container/network identifiers, normalized absolute mount paths, read-only host mounts, valid environment keys/NUL-free values, and published-port bounds. Stop/log/inspect helpers reject unsafe container names before Docker invocation.
+- Added parametrized invalid-configuration/helper cases; focused service tests pass **29/29**. Full unit suite: **478 passed**. Ruff check, 208-file format check, strict mypy (175 source files), 18 schemas, and `git diff --check` passed.
+- This is defense-in-depth for the owned local range. It does not provide container isolation, verify image provenance, or expand supported targets. No new tools, permissions, secrets, or network paths were added.
+- Final verification: `.venv/bin/pytest -q` **478 passed**; Ruff check passed; Ruff format check reports **208 files already formatted**; strict mypy passed for **175 source files**; all **18 schemas** current; `git diff --check` passed. Docker integration: **20 passed, 1 credential-gated hosted-model test skipped** in 128.86 seconds.
+- The service-spec constraints did not require new Docker privileges or a new runtime. They validate the existing fixed range launch configuration only; rootful Docker, image provenance, and broader benchmark/product limitations remain unchanged.
+
+## 2026-09-25 — production investigation and brokered telemetry
+
+- Moved the fixed path-traversal investigation service out of test scaffolding into `src/aegis/investigation/range.py`. It validates fixture/source identity, requires registered scan and telemetry actions, broker-runs Semgrep, records provenance, and emits only evidence-linked hypotheses.
+- Added `ProxyLogsAdapter` (`range.proxy.logs` / `telemetry.read`): fixed container and service target, zero model-supplied parameters, at most 200 log lines / 512 KiB, 10-second timeout, and typed timeout/failure results. Docker invocation now occurs only in this adapter; `RangeEvidenceInvestigator` consumes its result through `ActionBroker`.
+- The first live integration attempt correctly failed closed because the policy risk classifier did not yet recognize the new `telemetry` namespace. Added deterministic R0 classification and test; the broker then permits only when the scope explicitly allows the action/adapter. The real Docker full-case now passes with both analysis and telemetry brokered.
+- Verification: full unit suite **436 passed**; Ruff check/format; strict mypy (**171 source files**); 18 schemas current; focused Docker full-case **1 passed, 4 deselected (14.59 seconds)**; full Docker integration suite **20 passed, 1 credential-gated skip (139.31 seconds)**.
+- No provider request, new credential, public target, or network path was introduced. Remaining boundaries include rootful Docker for trusted range adapters, in-memory evidence, and fixed path-traversal-only correlation.
+
+## 2026-09-25 — schema contract CI and provider recheck
+
+- Added a CI workflow with commit-pinned checkout/setup actions, read-only repository permission, no model credentials, a locked-dependency quality job, and an ephemeral-runner Docker integration job. Added an explicit contract assertion that action-transaction and capability schemas remain registered; updated README, task queue, docs index, and CI threat-model notes.
+- Revalidated the locally runnable CI steps: `uv sync --locked --extra dev`; **431 unit tests passed**; Ruff check and format passed; strict mypy passed for 169 source files; 18 generated schemas were current; YAML parsing and `actionlint` passed; `git diff --check` passed. The full Docker integration suite (20 passed, 1 live-model skip) had passed immediately before this CI change. GitHub has not run the new workflow yet.
+- Rechecked the configured provider using read-only `GET /v1/models`; it returned HTTP 401. No generation request or model switch was made. SWE-bench/Vul4J/AutoPatchBench/cyber-defense benchmark runs remain unperformed; rootful-only runtime, 52 GB free disk, absent adapters, and provider authentication remain documented constraints.
+
+## 2026-09-25 — live case investigation and artifact-linked hypotheses
+
+- Required a same-case, nonempty correlator report before the orchestrator can proceed to containment. Missing, failed, cross-case, or empty investigation results fail closed; reports include the hypothesis in JSON and human output.
+- The real Docker full-case integration now broker-runs Semgrep, normalizes proxy telemetry from the owned range, records deployment provenance, and asserts a same-source hypothesis before continuing through containment and repair verification. Hypotheses carry case-scoped references to the scanner-result and deployment-provenance artifacts plus the telemetry artifact.
+- Updated benchmark notes to identify the live-model runner as oracle-seeded: it uses real proxy telemetry but a known fixture finding, so it is not attack detection, localization, scanner-quality, or repair scoring.
+- Verification: latest unit/static/schema/Docker results are tracked in `docs/ACTIVE_TASKS.md`. An initial concurrent check overlapped schema regeneration and reported one transient mismatch; schemas were regenerated before the clean rerun. Durable artifact storage, broad cross-tool correlation, causal validation, and standard external benchmark runs remain open.
+
+## 2026-09-25 — source-version-bound evidence correlation
+
+- Added typed route/source bindings, a versioned investigation-hypothesis record, and a correlation report. Hypotheses require a suspicious normalized event, same case, explicit path-to-file mapping, and equality of scan/deployment source digests. Cross-case records are rejected; provenance mismatch creates no hypothesis; unsafe paths are ignored with a warning.
+- Correlation output links the raw event artifact digest, normalized finding digest, and deployment source digest. It is deliberately a hypothesis, never a causal conclusion; untrusted scanner message text is excluded from the generated summary.
+- Fixed static-analysis path handling so worker-absolute `/src/...` findings normalize to safe source-relative paths; findings outside the read-only mount fail the scan result. Added unit tests for absolute/out-of-mount paths.
+- Verification at the time of this entry: six focused correlation tests passed; 14 scanner/correlation unit tests passed; the real-Docker Semgrep fixture test asserted the known path-traversal finding is `app.py`. Live orchestration was added in the subsequent entry above; durable evidence retrieval remains open.
+- Final checks for this slice: **427 unit tests passed**; Ruff check/format, mypy (**168 source files**), **18 schema files**, and diff checks passed. Targeted real-Docker Semgrep integration: **1 passed**. The full Docker suite was not rerun.
+
+## 2026-09-25 — broker-fed advisory behavior monitor baseline
+
+- Added a bounded process-local monitor that receives structured broker outcomes, action IDs, and deterministic risk tiers. It reports denial frequency, repeated denied action types, elevated-risk requests, and pending approvals as an advisory attached to `BrokerOutcome`.
+- The monitor has no authority: it cannot issue/revoke capabilities or alter broker dispatch. A unit test preloads a `PAUSE_AND_ESCALATE` advisory and confirms a subsequently permitted action is still dispatched according to policy. Duplicate request IDs are idempotent; observations are isolated by case and actor.
+- Added/exported the versioned assessment schema and documented the monitor's experimental status and threat-model limitations. Scores and thresholds are uncalibrated, do not estimate probability, and do not predict future behavior; no text or hidden-state monitoring is implemented.
+- Verification: full unit suite **419 passed**; focused broker/monitor tests **19 passed**; final-code targeted real-Docker full-case/containment/rollback tests **3 passed**. Ruff check/format, mypy (**164 source files**), all **15 schemas**, and `git diff --check` passed. The complete Docker integration suite and external datasets were not run for this advisory-only change.
+- Permissions, tools, network, and secrets: no new permissions, tool adapters, network paths, or credentials. The monitor stores bounded in-memory metadata only; no model rationale or telemetry text is ingested.
+
 ## 2026-09-02 — Research foundation
 
 ### Context received
@@ -409,3 +502,166 @@ Follow-up in the same session: the graceful-halt fix (ADR-033) above was necessa
 
 - This benchmark exercises exactly one Layer 0 fixture and only the containment-proposal step's model call; it says nothing about repair-candidate generation quality, detection recall, or performance against any external benchmark corpus (Layers 1-4 remain unwired, OQ-008 open).
 - `llama3.1:8b` was chosen for latency on one specific machine's hardware, not for output quality — both candidate models were equally reliable (5/5) in this small sample. A larger trial count or a different task (e.g. actual repair-candidate generation, once that path also calls a live model) could favor a different model.
+# 2026-09-25 — hosted qwen38 trial and transactional runtime foundation
+
+The owner clarified that this is an independent flagship project, not a hackathon submission, and set the broader direction: evolve from a cyber-defense application into a reusable trustworthy execution runtime while retaining cyber defense as the first reference app. The architecture decision is recorded as ADR-036; the name remains provisional and unchanged.
+
+## Model/API
+
+- Read the provided `docs/AGENT_LLAMA_CPP_API_GUIDE.md`; followed its OpenAI-compatible chat-completions contract and `reasoning_effort: none` guidance.
+- Used only the supplied `qwen38` alias on the warm A100 server; no model switching.
+- Added `scripts/smoke_model_api.py` for a one-request, typed, synthetic-range containment-planning test. It makes no tool call and checks the returned adapter against the supplied allowlist.
+- The smoke proposal passed schema validation and selected `range.proxy`.
+- Added an environment-gated live hosted-model Docker integration test. One run reached the case's `CLOSED` state. This model answered the containment-planning step only; the patch candidate remains fixture-provided.
+- `HostedOpenAICompatibleProvider` now respects per-request token/time limits and optional `reasoning_effort`; `scripts/bench_live_model.py` can target the hosted provider for an explicitly requested run.
+- Both live scripts reject non-local plaintext HTTP endpoints before sending an API key.
+- Only synthetic fixture context was sent. The API key was not persisted in tracked files; because it was pasted into chat, rotation is recommended after this work.
+
+## Runtime foundation
+
+- Added `aegis.core.transaction.ActionTransaction` with immutable history and explicit transition invariants; the broker records policy, authorization, capability, execution, and terminal adapter-result states.
+- Added a process-local capability authority and bound capability model. It verifies expiration/revocation/use count and case, transaction, subject, action, adapter, target, and canonical parameter digest before adapter dispatch.
+- Added `ExecutionReceipt` v1 with canonical content digest creation/verification, plus schema export for transaction/capability/receipt records.
+- Added a receipt factory from terminal transaction snapshots with state/disposition consistency checks; the factory cannot call an executed action committed.
+- Added `verify_audit_chain` for content-digest and predecessor-link verification; broker event generation now uses the shared digest function.
+- `ActionBroker` results stop at `EXECUTED` or `FAILED`; independent verification/commit/rollback coordination is intentionally not faked.
+
+## Verification
+
+- `.venv/bin/python -m pytest -q`: **369 passed**.
+- `.venv/bin/python -m ruff check src tests scripts`: passed.
+- `.venv/bin/python -m mypy`: passed, 143 source files.
+- `.venv/bin/python scripts/export_schemas.py --check`: passed, 9 schemas current.
+- Live API smoke and one live hosted reasoning integration run: passed.
+- Full Docker integration suite: **17 passed, 1 skipped** because the live-hosted test was not given credentials in the full-suite process. The same qwen38 integration test was separately run with environment-only credentials and passed once.
+- Final: `.venv/bin/python -m pytest -q` **370 passed**; Ruff format check passed (144 files), Ruff lint passed, strict mypy passed (143 source files), schema check passed (9 schemas), and `git diff --check` passed.
+
+## Next engineering priority
+
+The most important gap remains the effect path: containment and deployment mutations in the existing case orchestrator still use injected callables instead of broker actions. Next implement typed deployment/containment/rollback actions plus a transaction coordinator that requires independent postcondition checks before commit and verifies rollback on failure. See `docs/ACTIVE_TASKS.md` for the ordered queue and explicit guardrails.
+
+---
+
+# 2026-09-25 — scoped model patch provider and benchmark preflight
+
+- Added a typed hosted patch provider and strict JSON output contract. It receives a single allowlisted source file and synthetic vulnerability summary; model-produced diffs are checked locally for exact path scope and converted into content-hashed candidates.
+- Added a Layer-0 repair pilot runner. It runs source-integrity and diff-policy checks plus public tests, hidden exploit replay, and regressions in the existing independent network-disabled Docker verifier. The model has no test input or execution authority.
+- Unit tests for the new provider: **5 passed**; targeted Ruff and mypy passed.
+- Attempted one qwen38 repair call against the configured endpoint. The service returned **HTTP 401** before candidate generation. The result is captured at `artifacts/benchmark_runs/qwen38-path-traversal-pilot-attempt-2026-09-25.json`; this supplies no model-quality score. The request was not retried and no alternate model was loaded.
+- External benchmark preflight found ~52 GB free. SWE-bench's official local Docker guide recommends at least 120 GB; Meta AutoPatchBench recommends ~500 GB for sample-20. Vul4J is plausible but requires legacy JDKs and Java setup absent from this Python-only project. No external corpus was downloaded or evaluated.
+- Updated README, benchmark/data status, model strategy, open questions, decision log, active tasks, and progress report to reflect what actually happened.
+- No new permissions, tools, network paths, or secrets were introduced. The existing synthetic-source HTTPS API route was used once; no credential or endpoint is recorded in the result artifact.
+
+## 2026-09-25 — transaction replay hardening and benchmark reality check
+
+- Continued the runtime work by making transaction-id reservation and transaction lifecycle advances atomic within the process. Duplicate IDs, stale snapshots, and concurrent attempts to advance the same transaction fail before a second action dispatch.
+- Changed rollback approval to be explicitly auditable as `AWAITING_APPROVAL` and resumed only against that broker-issued transaction.
+- Added the paired real-range acceptance test. A permitted rule is independently checked for attack blocking and benign availability before commit. A deliberately overbroad, test-only adapter causes availability failure; the coordinator invokes typed broker rollback and verifies the original range behavior is restored.
+- Verification: 384 unit tests passed; full integration suite 19 passed / 1 skipped in 84.13s; Ruff format 182 files, Ruff lint, strict mypy (149 source files), 11 exported schemas, and `git diff --check` all passed.
+- Benchmark action: reviewed official benchmark setup requirements and checked local capacity. At ~52 GB free, SWE-bench (official guide: >=120 GB) and AutoPatchBench sample-20 (~500 GB recommended) were not launched; only Java 26 is installed, so the Vul4J Java 7/8/11/16 matrix is not available. No external dataset was downloaded or scored. Existing internal fixture coverage does not establish general coding or cyber-defense performance.
+- qwen38 remains the sole configured model alias. The previous hosted repair pilot returned HTTP 401 before inference; not retried or bypassed. No model switch, new credential, permission, tool, or network path was introduced.
+- Updated README, active queue, decision log, progress report, and this worklog. Legacy orchestration still bypasses the broker for some mutations; this remains a priority and is not claimed complete.
+
+## 2026-09-25 — containment migration verification correction
+
+- Removed legacy direct containment approval/apply/rollback callbacks from the orchestrator. The reference case now submits a fixed typed containment action and rollback through `ActionTransactionCoordinator` and `ActionBroker`; the model cannot choose operation parameters. Independent probes gate commit and verify rollback.
+- The first full integration rerun found that live Ollama had proposed an action rejected by scope policy. This is the correct fail-closed behavior; the test expectation was stale. Updated the live integration to accept explicit escalation and improved the case trace to include the broker's exact policy denial reason. Updated a report assertion accordingly.
+- Final verification after that correction: `pytest -q` **384 passed**; `.venv/bin/pytest tests/integration -q -m integration` **19 passed, 1 skipped** in 82.47s; focused live Ollama test **1 passed**; Ruff format **183 files clean**, Ruff lint clean, strict mypy **150 source files clean**, schema export check **11 schemas current**, and `git diff --check` clean.
+- Requirement satisfied: containment effects in the case runner use the brokered action path and out-of-scope proposals remain denied with actionable evidence. Files changed for this correction: orchestrator, live-model integration, report test, Active Tasks, Progress Report, and Worklog. No new permissions, tools, network routes, or secrets; the only live model integration used the already configured local Ollama fixture, not the hosted endpoint. Threat-model impact: denial observability improved; deployment/build/recovery broker migration, rootful Docker, and in-memory authority/audit remain open limitations.
+- External benchmark status is unchanged: none of SWE-bench, Vul4J, AutoPatchBench, Cyber Defense Benchmark, or a public dataset was executed. The hosted qwen38 repair pilot previously returned HTTP 401 before candidate generation; it was not retried. Current local fixture/integration tests are not external benchmark scores.
+
+## 2026-09-25 — deployment-path audit
+
+- Re-inspected the current orchestrator and real Docker integration after the containment migration. Confirmed deployment has a deeper bypass than the boolean approval name suggests: `CaseDependencies.approve_deployment` only returns a boolean, and `tests/integration/test_full_case.py`'s `recovery_attack_blocked` callback performs the candidate image build, replaces the running app container, and resets the proxy rule on its first invocation.
+- Recorded this precise path in `docs/ACTIVE_TASKS.md`. Do not mark deployment as brokered until build/rollout/rollback are separate typed actions (or a clearly bounded compound action), attributed approval is checked by policy, and independent postcondition checks decide commit versus verified rollback.
+- No runtime code changed in this audit. No new permissions, tools, secrets, or network routes. Existing verified test results remain as documented above. Threat-model implication: the end-to-end deployment currently has an authority/observability gap despite the passing test; existing test success does not prove policy mediation for that mutation.
+
+## 2026-09-25 — brokered local-range deployment and verified rollback
+
+- Removed the deployment approval callback and the Docker build/container replacement that had been hidden inside the first recovery attack probe. Added fixed typed `deployment.rollout` and `deployment.rollback` actions through `BrokeredDefenderActions`, `ActionTransactionCoordinator`, `ActionBroker`, and a range-bound `RangeDeploymentAdapter`.
+- The adapter accepts the candidate diff plus content digests, checks the trusted source and allowed changed files, constructs a temporary build context without public/hidden tests, builds with Docker network disabled, replaces only its configured local service, waits for health, and remembers the prior image/containment rule for rollback. The model receives no Docker socket, container naming controls, or raw command path.
+- Real Docker acceptance: the verified candidate commits after attack replay is blocked and benign traffic remains available. An exploit-preserving comment-only diff fails the independent postcondition, does not commit, rolls back via the broker, and the test verifies the original contained service. The focused rollback test passed.
+- Verification: unit suite **388 passed**; complete integration rerun **20 passed, 1 credential-gated hosted-model case skipped** in 86.56s; Ruff lint/format, strict mypy (**152 source files**), schema export (**11 current**), and `git diff --check` passed. An earlier integration run had one readiness timeout; its isolated test and the clean complete rerun passed.
+- Documentation updated: README status, architecture, tool/sandbox design, threat model, active task list, progress report, worklog, and ADR-043.
+- Permissions/tools/network/secrets: no new credentials or external network routes. The adapter newly declares `docker_control="authorized-range"` and uses the existing local Docker daemon solely for the explicitly configured synthetic range; builds use `--network=none`. No hosted model call was made in this milestone.
+- Threat-model impact/limits: closes the direct deployment/build/rollback bypass for this reference range and makes commit depend on independent probes. Docker remains rootful; build resource limits are not a hardened isolation guarantee; adapter state and receipts are process-local; this is not safe or suitable for arbitrary or production deployment. General runtime effect coverage remains unaudited.
+
+## 2026-09-25 — core sandbox contract for the analysis worker
+
+- Added versioned/schema-exported `SandboxExecutionRequest`, `SandboxExecutionResult`, and the `SandboxBackend` protocol to `aegis.core`; moved the one-shot analysis worker's Docker execution into `DockerSandboxBackend` and kept `ContainerRunSpec`/`ContainerRunResult` as compatibility aliases. `run_container` now accepts an alternate backend by dependency injection.
+- Added tests that enforce the core package's non-import dependency boundary, validate network-deny/positive budget fields, confirm timeout is represented as unsuccessful result data, and prove backend delegation.
+- Verification: default unit suite **392 passed**; focused backend/core/schema tests **16 passed**; Ruff check and format, strict mypy (**155 source files**), all 13 schemas, and `git diff --check` passed. Four real-Docker analysis-worker integration tests passed after this refactor; the immediately preceding clean full integration run (before it) was 20 passed and 1 credential-gated skip.
+- New permissions/tools/network/secrets: none. The default implementation continues to use the existing rootful Docker daemon with no network, read-only mounts, dropped capabilities, CPU/memory limits, and timeout. No new backend or isolation claim.
+- Remaining scope: Docker range deployment/service/network helpers do not yet implement this backend protocol; no production-grade isolation backend is available. This is dependency inversion only and leaves T03 residual risk unchanged.
+
+## 2026-09-25 — explicit verifier protocol
+
+- Replaced the coordinator's bare callable alias with a runtime-checkable `Verifier` protocol that receives the action transaction, typed adapter result, and control-supplied check timestamp, returning structured evidence-bearing `VerificationOutcome` records. Existing two-argument verifier functions remain supported during migration.
+- Added an object-verifier integration unit test through the real broker/coordinator and kept existing callable-based commit, exception, and rollback coverage. Verifier actor identity remains forbidden from matching the action actor; failures remain fail-closed.
+- Final verification: **393 unit tests passed; 20 Docker integrations passed and one credential-gated hosted-model test was skipped** in 92.72s; strict mypy (155 source files), Ruff and formatting passed.
+- Threat-model impact: API clarity/attribution improved, but verifier code can still run in-process and the protocol is not a process-security boundary. The clean-room patch verifier remains the stronger isolated path.
+
+## 2026-09-25 — Python repair and repository-hunting benchmark refresh
+
+- Rechecked primary benchmark sources in light of the request for standard external scores. Vul4Py's August 2026 paper describes a Python benchmark of 100 real vulnerabilities with paired exploit and functional oracles; it is a closer language/oracle fit than the Java-first Vul4J, but this review did not find/verify a runnable official artifact, license terms, or execution harness. It is not ready to run or cite as an Aegis result.
+- Reviewed VulnGym v0.1.4's official README and schema. It publishes 408 repository-level entries, 393 marked human-audited, with a CC-BY-4.0 dataset license and an official prediction evaluator. Its metrics are recall/coverage only and cannot penalize over-reporting; using it will require repo checkout at pinned commits and a project-level investigation/prediction adapter, which Aegis does not yet provide.
+- Refreshed the benchmark matrix, source registry, unresolved benchmark-selection question, and active queue. The real provider endpoint continues to return HTTP 401 from prior attempts; no model request, alias switch, benchmark dataset download, or external evaluator run was made in this research update.
+- New permissions, tools, secrets, or network paths: none. Read-only web research used primary paper/repository sources. Threat-model effect: none. Remaining blockers to meaningful external model scores are endpoint authorization, a verified dataset artifact, supported agent adapters, and an isolation plan for untrusted project code.
+
+## 2026-09-25 — close default range egress and remove published test port
+
+- Found a mismatch between the range's “isolated network” description and `create_network`: it created a normal Docker bridge with default external routing. Docker's primary reference documents `--internal` as restricting external access and also notes host/gateway connectivity caveats.
+- Changed network creation to request `--internal`, validate fixed network identifiers, and inspect the effective flag on every creation—including “already exists”—so a stale non-internal network cannot silently pass. Added a typed fixed-container-IP lookup with identifier/IP validation. Neither app nor proxy receives a published port; local tests and the optional benchmark harness contact the proxy's IP on the internal network.
+- The first live integration with `--internal` plus the old published-port approach failed readiness in all five cases. A disposable local probe confirmed host-to-proxy container-IP access works; cleanup explicitly removed its two uniquely named containers and network. After switching the harness, the full integration suite passed **20 runnable tests with 1 hosted-model test skipped** (137.99s); a final focused range rerun, including explicit no-port assertions, passed **6/6** (15.74s). The full unit suite passed **449 tests**; strict mypy (171 source files), 18 schemas, `ruff check`, `ruff format --check` (204 files), and `git diff --check` passed.
+- Documentation updated: ADR-051, T04 threat table/residuals, sandbox network constraints, active tasks, benchmark scripts/status, progress report, and this worklog. New permission/tool/secret/API route: none. This removes container egress via ordinary external networks and avoids host-published ports; it does not isolate against the Docker host or prevent access to host/gateway services. Rootful Docker remains trusted; this is not suitable for arbitrary or production targets.
+
+## 2026-09-25 — qwen38 repair-pilot recheck and benchmark preflight refresh
+
+- Per the owner's request to finish evaluation, made one controlled retry of the Layer-0 repair pilot using only the synthetic path-traversal `app.py` source. The configured qwen38 endpoint returned HTTP 401 in 0.146 seconds before generation. Recorded `artifacts/benchmark_runs/qwen38-path-traversal-pilot-recheck-2026-09-25.json`; no candidate was produced, no verifier ran, and no model-quality score exists. No additional request or model switch is planned until endpoint authorization is repaired.
+- Refreshed benchmark documentation with the second failure, current 393/20 local test counts, and primary upstream setup/source references. No external benchmark dataset or results were downloaded/run. The local filesystem still has ~52 GB free versus published SWE-bench and AutoPatchBench requirements; Vul4J's JDK matrix remains absent.
+- New permissions/tools/secrets/network routes: none. Only previously authorized HTTPS provider route was used once; the prompt included the owned synthetic fixture source and summary only. Threat impact is limited to synthetic data disclosure to the already-configured provider; access failure prevented data from being processed for a patch response.
+
+## 2026-09-25 — Portable audit-stream verification
+
+- Added deterministic compact JSONL export for a verified single-case audit chain, strict parsing/chain validation, and `scripts/verify_audit_stream.py` for offline verification of an exported stream. Export refuses empty or invalid chains.
+- Added tamper, reorder, malformed/empty/mixed-case, stable round-trip, and CLI success/failure tests. Updated ADR-046, architecture, active tasks, progress report, and T07 threat-model residuals.
+- Verification after this slice: **399 unit tests passed**; Ruff formatting/check passed; strict mypy passed for 158 source files; all 13 JSON schemas are current; `git diff --check` passed. One initial schema command omitted `PYTHONPATH=src` and failed to import the package; rerunning with the repository's required environment passed. No permissions, tools, network routes, or secrets were added. Security impact: audit records are easier to transport and consistency-check; this does not create durability, authenticity, immutability, or completeness guarantees.
+
+## 2026-09-25 — Versioned action contracts enforced by the broker
+
+- Added `aegis.action_definition/v1` models and schema export for typed input/output fields, risk, declared effects and permissions, reversibility/rollback linkage, resources, expected verifier, and idempotency/retry metadata. Adapter registration now requires contracts and rejects duplicate action IDs, mismatched permission metadata, and resource metadata that disagrees with the adapter's declared limits. This is consistency validation, not independent runtime CPU/memory enforcement.
+- Bound static-analysis and synthetic range adapters to their contracts. The broker validates action/adapter binding, required/unknown input fields, primitive types, and policy-risk agreement before capability issuance. Successful output fields/types are validated; a mismatch is audited as `CONTROL_FAILURE` rather than ordinary success.
+- Added tests for malformed types/fields/outputs, forbidden raw-command contract fields, retry/idempotency mismatch, rollback consistency, and verifier metadata. Exported the v1 JSON Schema.
+- Verification: **409 unit tests passed; 20 Docker integrations passed and one credential-gated hosted-model test skipped** in 95.64 seconds; Ruff format/check passed; strict mypy passed for 160 source files; all 14 schemas are current; `git diff --check` passed.
+- Permissions/tools/network/secrets: none added; registered network and secrets remain denied. No model-to-shell path was added. The typed catalog narrows malformed dispatch/output behavior and adds a fail-closed transition.
+- Follow-up in this session: the coordinator now compares returned verifier identity with the registered expected identity and fails closed on mismatch; a unit test confirms the action rolls back rather than committing. The latest action-contract checks are now **413 unit tests passed**; full integration passed at 20+1 skipped before verifier-ID enforcement, then 3 final-code real-range acceptance tests passed. Ruff/mypy/schema checks remain green.
+- Remaining: nested input validation is adapter-owned; retry scheduling and per-action resource reductions are not implemented. The current rootful Docker range does not provide a hardened resource boundary.
+
+## 2026-09-25 — VulnGym official evaluator range-line compatibility check
+
+- Checked the public VulnGym v0.1.4 checkout at commit `cd69f7e163e08485ab5496115ae03439cda6e27e`. This was metadata-only: no benchmark project repositories were cloned or executed and no model was called.
+- The release has 408 entries / 184 advisories. A JSON query found 44 entries with an `entry_point.line` or `critical_operation.line` represented as a documented range string. The pinned evaluator converts ground-truth lines with `int(...)` and reports those entries as unmatched.
+- Constructed one prediction per entry by copying the repository, commit, and annotated endpoint values from ground truth. The unmodified upstream evaluator matched 364/408 entries (89.22%) and 171/184 advisories (92.93%), with all 44 range-form entries unmatched. This is an evaluator/schema compatibility diagnostic only—not an Aegis score, model score, or meaningful ceiling.
+- Recorded the result at `artifacts/benchmark_runs/vulngym-v014-evaluator-oracle-compat-20260925.json`; updated benchmark status, source registry, progress, and the active queue. Future VulnGym reporting must retain the upstream evaluator unmodified and label any separate range-aware metric as supplemental.
+- Verification in this continuation: `.venv/bin/pytest -q` **449 passed**; `.venv/bin/pytest tests/integration -q -m integration` **20 passed, 1 skipped** (141.53 seconds; credential-gated model case skipped); Ruff check and format passed; strict mypy passed for 171 source files; all 18 schemas are current. No permissions, tools, secrets, or network paths were added. Remaining limitations: no Aegis VulnGym adapter or external benchmark agent score; endpoint auth still returns HTTP 401.
+
+## 2026-09-25 — corrected qwen38 configuration and repair-provider iteration
+
+- Correction to earlier endpoint status entries above: those HTTP 401s came from a stale/wrong ignored `.env.local`. The owner corrected the local credential; a qwen38 structured smoke proposal succeeded. No credential value is recorded in this worklog or other tracked documentation. The server alias was not switched.
+- The first two repair pilots requested model-authored unified diffs. Both candidates passed source/diff policy but failed the clean build because the hunk counts were malformed. This exposed a protocol fragility rather than a verifier issue.
+- Changed the patch protocol to ask for complete replacement source for the sole allowlisted file, then construct the unified diff locally. The request uses `reasoning_effort=none` and `max_tokens=8192`, rejects finish-reason truncation and no-op source, checks final-newline convention, and captures usage/finish metadata when returned. Benchmark records now include prompt version and finish reason.
+- Ran qwen38 on the two synthetic fixtures using this protocol. Path traversal returned unchanged source and was rejected before verification. Object authorization generated an owner-check patch that passed source integrity, diff policy, two public tests, exploit replay, and two regression tests; 5/5 clean-room checks passed. It completed in 20.838s (18.452s generation, 2.385s verification) and reported 725 prompt + 584 completion = 1,309 total tokens. This is one verified candidate on a synthetic case, not an external benchmark/model-quality score.
+- No new permissions, tools, target access, secrets, or network routes were introduced. The provider call transmitted only the already-authorized synthetic fixture and vulnerability context to the existing HTTPS endpoint. Hosted inference remains opt-in/out of CI; no raw model-to-shell or deployment authority was added. Threat impact is limited to the synthetic source disclosure boundary already documented.
+- Added a request-boundary test using a malicious source comment: the injection remains inside the untrusted user-data field, hidden tests are absent, and the provider exposes no tools. This only verifies prompt construction; it does not prove the model resists prompt injection.
+- Verification after provider implementation: `uv run pytest -q` **497 passed**; Docker integration **23 passed, 1 credential-gated live-model integration skipped** (116.65s); Ruff, format (**219 files**), strict mypy (**181 source files**), all **19 JSON schemas**, and `git diff --check` passed. After the test addition: `uv run pytest -q` **498 passed** with the same lint/format/type/schema/diff checks clean; Docker integration was not rerun because only a unit test changed.
+- Documentation/status updated: `ACTIVE_TASKS.md`, `BENCHMARKS_AND_DATASETS.md`, `MODEL_STRATEGY.md`, `OPEN_QUESTIONS.md`, `PROGRESS_REPORT.md`, and README. Earlier HTTP 401 worklog items are preserved as historical observations and corrected here.
+- Remaining limits: no external standard benchmark has been run; only one of two model-generated fixture attempts under v2 verified; patching remains narrow and fixture-bound; no broad coding-quality claim is justified. A public external benchmark must wait for an authorized, appropriately isolated harness and is still an open task.
+
+## 2026-09-25 — Supplemental VulnGym range-aware evaluator
+
+- Added `aegis.benchmarks.vulngym` and `scripts/evaluate_vulngym_range_aware.py`. The adapter validates the relevant JSONL contract, handles positive single-line and `start-end` locations, preserves repository/commit and endpoint-role matching, and emits recall-only metrics explicitly labelled non-official. It reports unmatched prediction count but no precision because VulnGym is not a complete negative-label set. It only reads metadata/predictions; no benchmark repositories are fetched or run.
+- Added 13 unit tests covering range intersections/tolerance, role and repo/commit strictness, path normalization, duplicate predictions, invalid ranges, empty denominators, and JSONL loading. A ground-truth-copy self-check against VulnGym v0.1.4 returned 408/408 entries and 184/184 advisories; this proves matcher compatibility only, not Aegis detection capability.
+- Final checks: `.venv/bin/pytest -q` **462 passed**; Ruff check passed, Ruff format reports **208 files already formatted**, strict mypy passed for **175 source files**, all **18 schemas** current, `git diff --check` and the result artifact's JSON parse passed. The real-Docker suite was run immediately before this isolated benchmark-only change and passed 20 with one credential-gated skip (141.53 seconds); runtime integration was not rerun because this change does not touch range/runtime code.
+- Files changed: `src/aegis/benchmarks/`, `scripts/evaluate_vulngym_range_aware.py`, `tests/unit/benchmarks/test_vulngym.py`, VulnGym benchmark artifact, active tasks, benchmark/progress/source/worklog docs. No new permissions, tools, secrets, target repositories, or network routes. Threat impact is limited to metadata validation/scoring; official evaluator defect and absent detection producer remain.
+
+---

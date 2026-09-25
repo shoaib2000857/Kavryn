@@ -96,6 +96,42 @@ def test_request_body_uses_the_configured_model(
     assert json.loads(body)["model"] == "deepseek-v4-flash"
 
 
+def test_request_body_uses_inference_output_and_timeout_limits(
+    task: ReasoningTask,
+    context: EvidenceContext,
+    tools: tuple[ToolDescriptor, ...],
+) -> None:
+    valid = _chat_response(json.dumps({"kind": "refuse", "rationale": "x"}))
+    transport = _FakeTransport([valid])
+    provider = HostedOpenAICompatibleProvider(
+        _config(reasoning_effort="none", timeout_seconds=90), api_key="k", http_post=transport
+    )
+    short_limits = InferenceLimits(max_output_tokens=384, max_tool_calls=2, timeout_seconds=12)
+
+    _propose(provider, task, context, tools, short_limits)
+    _url, _headers, body, timeout = transport.requests[0]
+    payload = json.loads(body)
+    assert payload["max_tokens"] == 384
+    assert payload["reasoning_effort"] == "none"
+    assert timeout == 12
+
+
+def test_base_url_trailing_slash_is_normalized(
+    task: ReasoningTask,
+    context: EvidenceContext,
+    tools: tuple[ToolDescriptor, ...],
+    limits: InferenceLimits,
+) -> None:
+    valid = _chat_response(json.dumps({"kind": "refuse", "rationale": "x"}))
+    transport = _FakeTransport([valid])
+    provider = HostedOpenAICompatibleProvider(
+        _config(base_url="https://example.invalid/v1/"), api_key="k", http_post=transport
+    )
+
+    _propose(provider, task, context, tools, limits)
+    assert transport.requests[0][0] == "https://example.invalid/v1/chat/completions"
+
+
 def test_malformed_response_shape_raises_hosted_api_error(
     task: ReasoningTask,
     context: EvidenceContext,

@@ -1,0 +1,30 @@
+{
+  "additionalProperties": false,
+  "description": "Owner-authored map from a local service route to a source file.",
+  "properties": {
+    "route_prefix": {
+      "maxLength": 256,
+      "minLength": 1,
+      "title": "Route Prefix",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "aegis.route_source_binding/v1",
+      "default": "aegis.route_source_binding/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_file": {
+      "maxLength": 1024,
+      "minLength": 1,
+      "title": "Source File",
+      "type": "string"
+    }
+  },
+  "required": [
+    "route_prefix",
+    "source_file"
+  ],
+  "title": "RouteSourceBinding",
+  "type": "object"
+}

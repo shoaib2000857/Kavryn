@@ -45,11 +45,18 @@ class Approval(AegisModel):
 
     @model_validator(mode="after")
     def _decision_fields_are_consistent(self) -> Approval:
+        if self.expires_at <= self.requested_at:
+            raise ValueError("approval expiry must be after its request time")
         decided_fields = (self.decided_by, self.decided_at)
         if self.decision is None and any(f is not None for f in decided_fields):
             raise ValueError("decided_by/decided_at must be unset when there is no decision")
         if self.decision is not None and any(f is None for f in decided_fields):
             raise ValueError("decided_by and decided_at are required once a decision is recorded")
+        if (
+            self.decided_at is not None
+            and not self.requested_at <= self.decided_at < self.expires_at
+        ):
+            raise ValueError("approval decision time must fall within its validity window")
         return self
 
 

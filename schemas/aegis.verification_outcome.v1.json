@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "VerificationCheck": {
+      "additionalProperties": false,
+      "description": "One independently produced postcondition check with evidence provenance.",
+      "properties": {
+        "detail": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        },
+        "evidence_ref": {
+          "maxLength": 2048,
+          "minLength": 3,
+          "pattern": "^[a-z][a-z0-9+.-]*://\\S+$",
+          "title": "Evidence Ref",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "verifier_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+          "title": "Verifier Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "verifier_id",
+        "passed",
+        "evidence_ref",
+        "detail"
+      ],
+      "title": "VerificationCheck",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The complete verifier result for one action transaction.",
+  "properties": {
+    "checked_at": {
+      "format": "date-time",
+      "title": "Checked At",
+      "type": "string"
+    },
+    "checks": {
+      "items": {
+        "$ref": "#/$defs/VerificationCheck"
+      },
+      "minItems": 1,
+      "title": "Checks",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "aegis.verification_outcome/v1",
+      "default": "aegis.verification_outcome/v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "verifier_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$",
+      "title": "Verifier Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "verifier_id",
+    "checked_at",
+    "checks"
+  ],
+  "title": "VerificationOutcome",
+  "type": "object"
+}

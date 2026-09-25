@@ -1,0 +1,48 @@
+{
+  "record_version": "aegis.benchmark_run_record/v1",
+  "benchmark": "VulnGym",
+  "dataset_release": "v0.1.4",
+  "upstream_commit": "cd69f7e163e08485ab5496115ae03439cda6e27e",
+  "run_kind": "evaluator_compatibility_diagnostic",
+  "is_aegis_agent_score": false,
+  "execution_scope": {
+    "dataset_metadata_read": true,
+    "benchmark_project_repositories_cloned": false,
+    "benchmark_project_code_executed": false,
+    "model_called": false
+  },
+  "dataset": {
+    "entries": 408,
+    "advisories": 184,
+    "entries_with_documented_range_line": 44
+  },
+  "official_evaluator": {
+    "modified": false,
+    "metrics": "advisory and entry recall only; false positives are not penalized",
+    "oracle_input_constructed_from_ground_truth": true,
+    "oracle_findings": 408,
+    "matched_entries": 364,
+    "entry_recall": 0.8921568627,
+    "matched_advisories": 171,
+    "advisory_recall": 0.9293478261,
+    "unmatched_oracle_findings": 44
+  },
+  "aegis_supplemental_evaluator_self_check": {
+    "metric_id": "vulngym_range_aware_recall_v1",
+    "is_official_metric": false,
+    "oracle_input_constructed_from_ground_truth": true,
+    "matched_entries": 408,
+    "total_entries": 408,
+    "matched_advisories": 184,
+    "total_advisories": 184,
+    "range_form_entries": 44,
+    "interpretation": "Parser/matcher self-check only; not an Aegis or model score."
+  },
+  "finding": "The released data schema permits line ranges, but the pinned official evaluator converts ground-truth endpoint lines with int(...); all 44 entries containing a range string are consequently unmatched even when the prediction copies the annotated paths and lines exactly.",
+  "interpretation": "Evaluator/schema compatibility defect. These oracle results are not an Aegis score, model score, or meaningful performance ceiling. Do not compare a future Aegis result to these figures.",
+  "reproduction": [
+    "jq -c '{repo_url,commit,entry_point:{file:.entry_point.file,line:.entry_point.line},critical_operation:{file:.critical_operation.file,line:.critical_operation.line}}' data/entries.jsonl > /tmp/vulngym-oracle-predictions.jsonl",
+    "python3 examples/evaluate.py /tmp/vulngym-oracle-predictions.jsonl"
+  ],
+  "recorded_on": "2026-09-25"
+}

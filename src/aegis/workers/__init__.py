@@ -1,14 +1,15 @@
-"""Execution backends (docs/IMPLEMENTATION_HANDOFF.md Change 5).
+"""Analysis-worker sandbox backend (docs/IMPLEMENTATION_HANDOFF.md Change 5).
 
-``container.py`` is the only module that invokes the ``docker`` CLI; it
-is only ever called from a registered ``ToolAdapter`` running inside
-the broker/worker trust boundary, never from the reasoning runtime.
+The default implementation uses the core ``SandboxBackend`` contract and
+rootful Docker. It is called by registered tool adapters, never directly by
+the reasoning runtime.
 """
 
 from aegis.workers.container import (
     ContainerRunError,
     ContainerRunResult,
     ContainerRunSpec,
+    DockerSandboxBackend,
     SourcePathError,
     resolve_read_only_source,
     run_container,
@@ -18,6 +19,7 @@ __all__ = [
     "ContainerRunError",
     "ContainerRunResult",
     "ContainerRunSpec",
+    "DockerSandboxBackend",
     "SourcePathError",
     "resolve_read_only_source",
     "run_container",
