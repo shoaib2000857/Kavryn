@@ -16,9 +16,12 @@ Updated: 2026-09-30. This is the operational task list for the current flagship 
   Docker permissions, credential sourcing or sudo introduced.
 - [x] Add CI archive checks, isolated installed-wheel smoke and downloadable
   workflow artifacts; model tests remain opt-in.
-- [ ] Push verified changes and rename GitHub repository (owner authorized).
-- [ ] PyPI publication and tagged release/security contact remain separate;
-  do not claim a registry download or remote CI success before it exists.
+- [x] Push verified changes (`e42c8c5`) and rename GitHub repository to Kavryn;
+  remote main verified. Correct invalid existing setup-python action pin.
+- [ ] Owner now authorized PyPI publication. Release archives are ready, but
+  no publishing token or local PyPI account configuration is available.
+  See the SDK publishing instructions; registry publication remains blocked
+  on account credentials. Tagged release/security contact remain separate.
 
 Older reliability checkpoints below are historical.
 

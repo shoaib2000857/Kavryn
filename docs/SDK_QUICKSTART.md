@@ -38,6 +38,35 @@ python -m kavryn --help
 These commands assume this repository has been downloaded. **`pip install kavryn`
 from PyPI is not supported until an actual registry release is published.**
 
+### Maintainer: first PyPI publication
+
+Owner has authorized publishing version 0.1.0. A public JSON lookup currently
+returns 404 for `kavryn`; this is not a guarantee that PyPI will grant the name.
+The checked wheel/source archives are ready. Publishing credentials are not
+configured on this machine, so no upload has occurred.
+
+Create a PyPI account and API token in your own browser. For the first upload,
+PyPI may require an account-scoped token; replace it with a project-scoped
+token after creation. Do not paste tokens into chat, tracked files or commands.
+In a trusted operator terminal, read it without terminal echo:
+
+```bash
+uv build --out-dir dist
+uv run python scripts/check_release.py dist
+read -rs -p 'PyPI API token: ' UV_PUBLISH_TOKEN
+export UV_PUBLISH_TOKEN
+uv publish dist/kavryn-0.1.0-py3-none-any.whl dist/kavryn-0.1.0.tar.gz
+unset UV_PUBLISH_TOKEN
+```
+
+Do not retry by changing version metadata merely to hide failed validation;
+inspect the upload result and verify the public release and fresh installation.
+PyPI releases are public artifacts and version files cannot simply be replaced.
+Tokenless GitHub Trusted Publishing is an alternative but requires PyPI account
+setup and a dedicated release workflow; the current CI does **not** publish.
+See [uv publishing](https://docs.astral.sh/uv/guides/package/) and
+[PyPI Trusted Publishers](https://docs.pypi.org/trusted-publishers/).
+
 ## Public Python API
 
 ```python

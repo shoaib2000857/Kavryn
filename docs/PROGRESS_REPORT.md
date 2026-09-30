@@ -11,6 +11,13 @@
 > integration checkpoint. PyPI publication and remote CI success are not claimed.
 > See [SDK quick start](SDK_QUICKSTART.md).
 
+> **Publication follow-up:** GitHub repository is now
+> [Kavryn](https://github.com/shoaib2000857/Kavryn); main `e42c8c5` was pushed
+> and verified remotely. The first CI run failed before any tests because an
+> existing setup-python SHA did not resolve; replaced it with the official v6
+> commit. Owner authorized PyPI publication, but no publishing token or local
+> PyPI account configuration is available. No registry upload is claimed.
+
 > **Latest checkpoint — model-independent reliability/operations, 2026-09-30:** Localized output is reconstructed into trusted complete files before canonical diff generation; real-patch tests cover missing final newlines, stale source/diff hashes, unsupported headers/metadata, links/special files, fuzzy context rejection and failed-workspace cleanup. Independent diff integrity is now a `CONTROL_FAILURE`; owned hidden replay cases were strengthened after integration exposed a placeholder digest and ineffective alternative traversal paths. Optional SQLite schema-3 receipts survive reopen and reject replacement/tampering; terminal storage failure does not repeat execution. Added model-free simulated commit/rollback demo, prerequisite/storage doctor, and SQL-read-only journal inspection. **579 unit tests passed; 27 Docker integrations passed, 2 opt-in live-model tests skipped (154.60s)**. Ruff lint and format (244 files), strict mypy (203 source files), all 19 schemas, and diff checks passed. No inference, new benchmark downloads, or new model scores this round. See [operations guide](RELIABILITY_AND_OPERATIONS.md). Post-crash reconciliation, complete durable authority, production isolation, and learned monitoring remain unfinished.
 
 > **2026-09-30 small external repair pilot:** Added fixed-plan brokered rootless gVisor execution with no network, memory overlays and user-systemd resource limits. Downloaded two original SWE-bench Requests environments; official required tests/parser/grader: Qwen 1142 passes 6/6, 1339 fails patch application; both reference patches pass. Third selected task not run; no full SWE score or coding-uplift claim. Only our newly downloaded images/export containers were removed after retaining rootfs exports. System/data free space: 4.3 GB/40 GB. Checks: **554 unit tests**, Ruff lint/format (**239 files**), mypy (**200 files**), **19 schemas**. See [storage and evidence](STORAGE_AND_SWE_PILOT.md).

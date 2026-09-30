@@ -1,5 +1,27 @@
 # Worklog
 
+## 2026-10-01 — GitHub publication confirmed; PyPI credential checkpoint
+
+- **Requirements:** push/rename completed; owner additionally requested PyPI
+  publication. Repository renamed to `shoaib2000857/Kavryn`, origin updated,
+  and commit `e42c8c5` pushed with matching remote main SHA.
+- **CI defect:** run 36771541548 stopped at job setup, before tests. Existing
+  setup-python pin did not resolve. Both jobs now use the official v6 commit
+  `ece7cb06caefa5fff74198d8649806c4678c61a1`, verified through GitHub's API.
+- **PyPI checkpoint:** public `kavryn` JSON endpoint returned 404. Checked only
+  presence of standard publishing environment variables and `.pypirc` without
+  printing secrets; none configured. No unauthenticated upload attempted.
+  Added operator publishing instructions; cannot claim publication without
+  credentials or a configured trusted publisher.
+- **Files:** CI workflow, SDK guide, active tasks, progress report and worklog.
+  YAML parse, archive checks and diff checks rerun; prior 586-unit-test and
+  installed-wheel results remain the code checkpoint. No runtime code changed.
+- **Permissions/threat impact:** authorized GitHub writes and read-only PyPI
+  availability check; no agent permissions or secrets added. Future publishing
+  token belongs only to the operator environment, not model context or Git.
+- **Remaining:** remote CI outcome, PyPI authentication/upload/registry smoke,
+  tagged release and stronger-model evaluation. No publication score claimed.
+
 ## 2026-10-01 — Apache-2.0 Kavryn SDK and authorized publication preparation
 
 - **Requirements:** owner approved Apache-2.0, requested credit preservation,
