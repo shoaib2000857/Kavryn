@@ -1,19 +1,25 @@
 """Exercise the object-authorization scenario through the brokered case flow.
 
-The containment proposal and patch are deterministic test oracles. The test
-validates orchestration, evidence, policy, verification, deployment, and
-recovery plumbing; it is not a model-performance result.
+The default test uses deterministic proposals and patches. A separately gated
+live test uses the configured model for containment reasoning and patch source,
+then verifies and deploys through the same controlled path. Both are synthetic
+fixture integrations; neither is a standard benchmark score.
 """
 
 from __future__ import annotations
 
 import difflib
 import hashlib
+import json
+import os
 import subprocess
 import tempfile
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
+from uuid import uuid4
 
 import pytest
 
@@ -43,6 +49,8 @@ from aegis.investigation.range import RangeEvidenceInvestigator, make_range_semg
 from aegis.orchestrator.actions import BrokeredDefenderActions
 from aegis.orchestrator.case_runner import CaseDependencies, run_case
 from aegis.policy.approval import Approval, ApprovalDecision
+from aegis.providers.base import ReasoningProvider
+from aegis.providers.hosted import HostedOpenAICompatibleProvider, HostedProviderConfig
 from aegis.providers.schemas import StructuredProposal, ToolDescriptor
 from aegis.providers.stub import StubProvider
 from aegis.range.adapter import ProxyRuleAdapter
@@ -60,9 +68,10 @@ from aegis.range.service import (
 from aegis.range.traffic import send_get
 from aegis.repair.candidate import PatchCandidate, changed_files
 from aegis.repair.hashing import hash_source_tree
+from aegis.repair.provider import HostedPatchProvider, PatchGenerationRequest
 from aegis.verifier.checks import check_clean_room_tests, check_diff_policy, check_source_integrity
 from aegis.verifier.gate import evaluate_assurance
-from aegis.verifier.models import AssuranceOutcome
+from aegis.verifier.models import AssuranceOutcome, CheckResult
 from aegis.workflow.states import CaseState
 
 pytestmark = pytest.mark.integration
@@ -120,11 +129,90 @@ def _diff(updated: str) -> str:
     )
 
 
+@pytest.mark.parametrize("denial_status", [403, 404])
 def test_object_authorization_incident_runs_through_brokered_defense(
     docker_available: bool,
     analysis_worker_image_id: str,
     tmp_path: Path,
+    denial_status: int,
 ) -> None:
+    _run_object_authorization_case(
+        docker_available, analysis_worker_image_id, tmp_path, denial_status=denial_status
+    )
+
+
+@pytest.mark.skipif(
+    os.environ.get("AEGIS_LIVE_MODEL_REPAIR") != "1"
+    or not (os.environ.get("LLM_URL") and os.environ.get("LLM_API_KEY")),
+    reason="set AEGIS_LIVE_MODEL_REPAIR=1 and model credentials for full model repair",
+)
+def test_object_authorization_case_with_live_model_reasoning_and_repair(
+    docker_available: bool, analysis_worker_image_id: str, tmp_path: Path
+) -> None:
+    endpoint = os.environ["LLM_URL"].rstrip("/")
+    parsed = urlsplit(endpoint)
+    if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+        pytest.fail("refusing to send credentials to non-local plaintext HTTP")
+    if not endpoint.endswith("/v1"):
+        endpoint += "/v1"
+    config = HostedProviderConfig(
+        base_url=endpoint,
+        model=os.environ.get("LLM_MODEL", "qwen38"),
+        reasoning_effort="none",
+        timeout_seconds=180,
+        max_repair_attempts=0,
+    )
+    patch_provider = HostedPatchProvider(
+        config,
+        api_key=os.environ["LLM_API_KEY"],
+        structured_output=os.environ.get("AEGIS_MODEL_JSON_SCHEMA") == "1",
+        public_syntax_retry=os.environ.get("AEGIS_PUBLIC_SYNTAX_RETRY") == "1",
+    )
+    patch_request = PatchGenerationRequest(
+        case_id=CASE_ID,
+        base_repository="object-authorization-v1",
+        base_source_digest=hash_source_tree(str(SOURCE)),
+        source_file="app.py",
+        source=ORIGINAL_SOURCE,
+        vulnerability_summary=(
+            "The document endpoint authenticates a synthetic principal but returns any "
+            "existing document without comparing the document owner with that principal. "
+            "Deny cross-owner access while preserving owner access and invalid-token behavior."
+        ),
+        allowed_files=ALLOWED_FILES,
+    )
+    report_path = (
+        REPOSITORY_ROOT
+        / "artifacts"
+        / "benchmark_runs"
+        / f"live-object-auth-case-{uuid4().hex}.json"
+    )
+    _run_object_authorization_case(
+        docker_available,
+        analysis_worker_image_id,
+        tmp_path,
+        reasoning_provider=HostedOpenAICompatibleProvider(
+            config, api_key=os.environ["LLM_API_KEY"]
+        ),
+        patch_generator=lambda: patch_provider.generate(patch_request),
+        report_path=report_path,
+        model=config.model,
+    )
+
+
+def _run_object_authorization_case(
+    docker_available: bool,
+    analysis_worker_image_id: str,
+    tmp_path: Path,
+    *,
+    reasoning_provider: ReasoningProvider | None = None,
+    patch_generator: Callable[[], PatchCandidate] | None = None,
+    report_path: Path | None = None,
+    model: str | None = None,
+    denial_status: int = 404,
+) -> None:
+    started_at = datetime.now(UTC)
+    started = time.perf_counter()
     if not docker_available:
         pytest.skip("Docker is not available")
     if FIXED_SOURCE == ORIGINAL_SOURCE:
@@ -279,7 +367,11 @@ def test_object_authorization_incident_runs_through_brokered_defense(
             ),
         )
 
-        diff = _diff(FIXED_SOURCE)
+        fixed_source = FIXED_SOURCE.replace(
+            'if document["owner"] != g.principal:\n        abort(404)',
+            f'if document["owner"] != g.principal:\n        abort({denial_status})',
+        )
+        diff = _diff(fixed_source)
         candidate = PatchCandidate(
             id="object-auth-case-oracle-candidate",
             case_id=CASE_ID,
@@ -292,6 +384,14 @@ def test_object_authorization_incident_runs_through_brokered_defense(
             repair_invariant="Only the authenticated owner may read a document.",
             generated_at=now,
         )
+
+        generated_candidates: list[PatchCandidate] = []
+        verification_checks: list[CheckResult] = []
+
+        def generate_candidate() -> PatchCandidate:
+            generated = patch_generator() if patch_generator is not None else candidate
+            generated_candidates.append(generated)
+            return generated
 
         def verify_candidate(patch: PatchCandidate) -> AssuranceOutcome:
             checks = [
@@ -310,6 +410,7 @@ def test_object_authorization_incident_runs_through_brokered_defense(
                         hidden_tests_dir=str(HIDDEN_TESTS),
                     )
                 )
+            verification_checks.extend(checks)
             return evaluate_assurance(tuple(checks))
 
         proposal = StructuredProposal(
@@ -325,15 +426,15 @@ def test_object_authorization_incident_runs_through_brokered_defense(
         trace = run_case(
             CASE_ID,
             CaseDependencies(
-                provider=StubProvider(response=proposal),
+                provider=reasoning_provider or StubProvider(response=proposal),
                 exploit_reachable=lambda: request_cross_owner() == 200,
                 attack_blocked=lambda: request_cross_owner() == 403,
                 benign_available=lambda: request_alice_document() == 200,
                 brokered_actions=actions,
-                generate_candidate=lambda: candidate,
+                generate_candidate=generate_candidate,
                 verify_candidate=verify_candidate,
                 deployment_target_ref=TARGET_REF,
-                recovery_attack_blocked=lambda: request_cross_owner() == 404,
+                recovery_attack_blocked=lambda: request_cross_owner() in {403, 404},
                 recovery_benign_available=lambda: request_alice_document() == 200,
                 investigate=investigator,
                 incident_summary=(
@@ -346,7 +447,10 @@ def test_object_authorization_incident_runs_through_brokered_defense(
                         category="local range containment",
                         risk_tier=RiskTier.R3_REVERSIBLE_RESPONSE,
                         description=(
-                            "Applies owner-configured reversible containment in this range."
+                            "Supports action_type=contain.rate_limit, "
+                            "target_ref=service://object-auth-range, adapter=range.proxy, "
+                            "with empty parameters. Applies owner-configured reversible "
+                            "containment in this range."
                         ),
                     ),
                 ),
@@ -355,6 +459,55 @@ def test_object_authorization_incident_runs_through_brokered_defense(
             ),
         )
 
+        if report_path is not None:
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report = {
+                "benchmark": "Aegis Layer-0 synthetic incident-to-recovery integration",
+                "not_a_standard_benchmark": True,
+                "scenario": "object-authorization-v1",
+                "model": model,
+                "repository_revision": subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=REPOSITORY_ROOT,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                ).stdout.strip(),
+                "working_tree_dirty": bool(
+                    subprocess.run(
+                        ["git", "status", "--porcelain"],
+                        cwd=REPOSITORY_ROOT,
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                        timeout=10,
+                    ).stdout.strip()
+                ),
+                "policy_digest": case.scope_digest.model_dump(mode="json"),
+                "policy_version": "object-auth-range-v1",
+                "patch_prompt_version": "full-source-v2" if patch_generator is not None else None,
+                "json_schema_requested": os.environ.get("AEGIS_MODEL_JSON_SCHEMA") == "1",
+                "public_syntax_retry_enabled": os.environ.get("AEGIS_PUBLIC_SYNTAX_RETRY") == "1",
+                "started_at": started_at.isoformat(),
+                "duration_seconds": round(time.perf_counter() - started, 3),
+                "prepared_patch_used": patch_generator is None,
+                "approval_mode": "synthetic-test-operator",
+                "base_source_digest": hash_source_tree(str(SOURCE)).model_dump(mode="json"),
+                "images": {"app": app_image, "proxy": proxy_image, "verifier": verifier_image},
+                "trace": {
+                    "states": [state.value for state in trace.states],
+                    "notes": trace.notes,
+                    "halted": trace.halted,
+                    "halt_reason": trace.halt_reason,
+                    "final_state": trace.final_state.value,
+                },
+                "candidates": [item.model_dump(mode="json") for item in generated_candidates],
+                "verification": [item.model_dump(mode="json") for item in verification_checks],
+                "audit": [item.model_dump(mode="json") for item in audit.events_for_case(CASE_ID)],
+            }
+            report_path.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+            print(f"Live synthetic case record: {report_path}")
         assert not trace.halted, (trace.halt_reason, trace.notes)
         assert trace.final_state is CaseState.CLOSED
         assert trace.investigation is not None
@@ -363,13 +516,16 @@ def test_object_authorization_incident_runs_through_brokered_defense(
             and item.finding_rule_id.endswith("python-flask-object-authorization")
             for item in trace.investigation.hypotheses
         )
-        assert request_cross_owner() == 404
+        assert request_cross_owner() in {403, 404}
         assert request_alice_document() == 200
         assert TEST_BOB_TOKEN not in container_logs(PROXY_NAME)
         events = audit.events_for_case(CASE_ID)
         assert AuditEventType.APPROVAL_RECORDED in [event.event_type for event in events]
         assert any("action_type=deployment.rollout" in event.summary for event in events)
         assert broker.audit_root(CASE_ID) is not None
+        if patch_generator is not None:
+            assert len(generated_candidates) == 1
+            assert generated_candidates[0].id != "object-auth-case-oracle-candidate"
     finally:
         stop_service(APP_NAME)
         stop_service(PROXY_NAME)

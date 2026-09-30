@@ -1,0 +1,240 @@
++ source /opt/miniconda3/bin/On branch main
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   requests/structures.py
+	modified:   requests/utils.py
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	.eggs/
+
+no changes added to commit (use "git add" and/or "git commit -a")
+commit ab36f3cc6f91f1e4903a3f4b31501cb7fefe4555
+Merge: d2ba5798 49ca72c8
+Author: Kenneth Reitz <me@kennethreitz.com>
+Date:   Sun Apr 28 16:58:08 2013 -0700
+
+    Merge pull request #1332 from bboe/urllib3
+    
+    Update urllib3 to 59de03e6163c6928dc01832ed6e48e9f6c34c795.
+
+diff --git a/requests/structures.py b/requests/structures.py
+index 05f5ac15..8d02ea67 100644
+--- a/requests/structures.py
++++ b/requests/structures.py
+@@ -9,6 +9,7 @@ Data structures that power Requests.
+ """
+ 
+ import os
++import collections
+ from itertools import islice
+ 
+ 
+@@ -33,43 +34,79 @@ class IteratorProxy(object):
+         return "".join(islice(self.i, None, n))
+ 
+ 
+-class CaseInsensitiveDict(dict):
+-    """Case-insensitive Dictionary
++class CaseInsensitiveDict(collections.MutableMapping):
++    """
++    A case-insensitive ``dict``-like object.
++
++    Implements all methods and operations of
++    ``collections.MutableMapping`` as well as dict's ``copy``. Also
++    provides ``lower_items``.
++
++    All keys are expected to be strings. The structure remembers the
++    case of the last key to be set, and ``iter(instance)``,
++    ``keys()``, ``items()``, ``iterkeys()``, and ``iteritems()``
++    will contain case-sensitive keys. However, querying and contains
++    testing is case insensitive:
++
++        cid = CaseInsensitiveDict()
++        cid['Accept'] = 'application/json'
++        cid['aCCEPT'] == 'application/json'  # True
++        list(cid) == ['Accept']  # True
+ 
+     For example, ``headers['content-encoding']`` will return the
+-    value of a ``'Content-Encoding'`` response header."""
++    value of a ``'Content-Encoding'`` response header, regardless
++    of how the header name was originally stored.
+ 
+-    @property
+-    def lower_keys(self):
+-        if not hasattr(self, '_lower_keys') or not self._lower_keys:
+-            self._lower_keys = dict((k.lower(), k) for k in list(self.keys()))
+-        return self._lower_keys
++    If the constructor, ``.update``, or equality comparison
++    operations are given keys that have equal ``.lower()``s, the
++    behavior is undefined.
+ 
+-    def _clear_lower_keys(self):
+-        if hasattr(self, '_lower_keys'):
+-            self._lower_keys.clear()
++    """
++    def __init__(self, data=None, **kwargs):
++        self._store = dict()
++        if data is None:
++            data = {}
++        self.update(data, **kwargs)
+ 
+     def __setitem__(self, key, value):
+-        dict.__setitem__(self, key, value)
+-        self._clear_lower_keys()
++        # Use the lowercased key for lookups, but store the actual
++        # key alongside the value.
++        self._store[key.lower()] = (key, value)
+ 
+-    def __delitem__(self, key):
+-        dict.__delitem__(self, self.lower_keys.get(key.lower(), key))
+-        self._lower_keys.clear()
++    def __getitem__(self, key):
++        return self._store[key.lower()][1]
+ 
+-    def __contains__(self, key):
+-        return key.lower() in self.lower_keys
++    def __delitem__(self, key):
++        del self._store[key.lower()]
+ 
+-    def __getitem__(self, key):
+-        # We allow fall-through here, so values default to None
+-        if key in self:
+-            return dict.__getitem__(self, self.lower_keys[key.lower()])
++    def __iter__(self):
++        return (casedkey for casedkey, mappedvalue in self._store.values())
+ 
+-    def get(self, key, default=None):
+-        if key in self:
+-            return self[key]
++    def __len__(self):
++        return len(self._store)
++
++    def lower_items(self):
++        """Like iteritems(), but with all lowercase keys."""
++        return (
++            (lowerkey, keyval[1])
++            for (lowerkey, keyval)
++            in self._store.items()
++        )
++
++    def __eq__(self, other):
++        if isinstance(other, collections.Mapping):
++            other = CaseInsensitiveDict(other)
+         else:
+-            return default
++            return NotImplemented
++        # Compare insensitively
++        return dict(self.lower_items()) == dict(other.lower_items())
++
++    # Copy is required
++    def copy(self):
++         return CaseInsensitiveDict(self._store.values())
++
++    def __repr__(self):
++        return '%s(%r)' % (self.__class__.__name__, dict(self.items()))
+ 
+ 
+ class LookupDict(dict):
+diff --git a/requests/utils.py b/+ source /opt/miniconda3/bin/activate
+++ _CONDA_ROOT=/opt/miniconda3
+++ . /opt/miniconda3/etc/profile.d/conda.sh
++++ export CONDA_EXE=/opt/miniconda3/bin/conda
++++ CONDA_EXE=/opt/miniconda3/bin/conda
++++ export _CE_M=
++++ _CE_M=
++++ export _CE_CONDA=
++++ _CE_CONDA=
++++ export CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
++++ CONDA_PYTHON_EXE=/opt/miniconda3/bin/python
++++ '[' -z x ']'
+++ conda activate
+++ local cmd=activate
+++ case "$cmd" in
+++ __conda_activate activate
+++ '[' -n '' ']'
+++ local ask_conda
++++ PS1='(testbed) '
++++ __conda_exe shell.posix activate
++++ /opt/miniconda3/bin/conda shell.posix activate
+++ ask_conda='PS1='\''(base) '\''
+export PATH='\''/opt/miniconda3/bin:/opt/miniconda3/condabin:/usr/bin:/bin'\''
+expoProcessing /testbed
+  Preparing metadata (setup.py): started
+  Preparing metadata (setup.py): finished with status 'done'
+Building wheels for collected packages: requests
+  Building wheel for requests (setup.py): started
+  Building wheel for requests (setup.py): finished with status 'done'
+  Created wheel for requests: filename=requests-1.2.0-py3-none-any.whl size=368792 sha256=1e5de89946f4e7aa3e09d6ba034dd42584900e307ef58adf8c9ef9bd6a70ad14
+  Stored in directory: /tmp/pip-ephem-wheel-cache-q3qom5y_/wheels/7d/66/67/70d1ee2124ccf21d601c352e25cdca10f611f7c8b3f9ffb9e4
+Successfully built requests
+Installing collected packages: requests
+  Attempting uninstall: requests
+    Found existing installation: requests 1.2.0
+    Uninstalling requests-1.2.0:
+      Successfully uninstalled requests-1.2.0
+Successfully installed requests-1.2.0
+============================= test session starts ==============================
+platform linux -- Python 3.9.20, pytest-7.4.4, pluggy-1.0.0
+rootdir: /testbed
+collected 31 items
+
+test_requests.py ...............................                         [100%]
+
+=============================== warnings summary ===============================
+requests/packages/urllib3/_collections.py:7
+  /testbed/requests/packages/urllib3/_collections.py:7: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    from collections import MutableMapping
+
+test_requests.py::TestCaseInsensitiveDict::test_equality
+  /testbed/requests/structures.py:97: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    if isinstance(other, collections.Mapping):
+
+test_requests.py::RequestsTestCase::test_hook_receives_request_arguments
+  /testbed/requests/models.py:141: DeprecationWarning: Using or importing the ABCs from 'collections' instead of from 'collections.abc' is deprecated since Python 3.3, and in 3.10 it will stop working
+    if isinstance(hook, collections.Callable):
+
+test_requests.py::TestCaseInsensitiveDict::test_update_retains_unchanged
+  /testbed/test_requests.py:563: DeprecationWarning: Please use assertEqual instead.
+    self.assertEquals(cid['bar'], 'bar')
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+==================================== PASSES ====================================
+=========================== short test summary info ============================
+PASSED test_requests.py::TestCaseInsensitiveDict::test_equality
+PASSED test_requests.py::TestCaseInsensitiveDict::test_fixes_649
+PASSED test_requests.py::TestCaseInsensitiveDict::test_len
+PASSED test_requests.py::TestCaseInsensitiveDict::test_lower_items
+PASSED test_requests.py::TestCaseInsensitiveDict::test_preserve_last_key_case
+PASSED test_requests.py::TestCaseInsensitiveDict::test_setdefault
+PASSED test_requests.py::TestCaseInsensitiveDict::test_update
+PASSED test_requests.py::RequestsTestCase::test_basic_building
+PASSED test_requests.py::RequestsTestCase::test_cannot_send_unprepared_requests
+PASSED test_requests.py::RequestsTestCase::test_cookie_parameters
+PASSED test_requests.py::RequestsTestCase::test_entry_points
+PASSED test_requests.py::RequestsTestCase::test_get_auth_from_url
+PASSED test_requests.py::RequestsTestCase::test_hook_receives_request_arguments
+PASSED test_requests.py::RequestsTestCase::test_http_error
+PASSED test_requests.py::RequestsTestCase::test_invalid_url
+PASSED test_requests.py::RequestsTestCase::test_links
+PASSED test_requests.py::RequestsTestCase::test_no_content_length
+PASSED test_requests.py::RequestsTestCase::test_params_are_added_before_fragment
+PASSED test_requests.py::RequestsTestCase::test_path_is_not_double_encoded
+PASSED test_requests.py::RequestsTestCase::test_response_is_iterable
+PASSED test_requests.py::TestCaseInsensitiveDict::test_contains
+PASSED test_requests.py::TestCaseInsensitiveDict::test_delitem
+PASSED test_requests.py::TestCaseInsensitiveDict::test_docstring_example
+PASSED test_requests.py::TestCaseInsensitiveDict::test_get
+PASSED test_requests.py::TestCaseInsensitiveDict::test_getitem
+PASSED test_requests.py::TestCaseInsensitiveDict::test_iter
+PASSED test_requests.py::TestCaseInsensitiveDict::test_iterable_init
+PASSED test_requests.py::TestCaseInsensitiveDict::test_kwargs_init
+PASSED test_requests.py::TestCaseInsensitiveDict::test_mapping_init
+PASSED test_requests.py::TestCaseInsensitiveDict::test_preserve_key_case
+PASSED test_requests.py::TestCaseInsensitiveDict::test_update_retains_unchanged
+======================== 31 passed, 4 warnings in 0.20s ========================
+ve_last_key_case test_requests.py::TestCaseInsensitiveDict::test_setdefault test_requests.py::TestCaseInsensitiveDict::test_update test_requests.py::RequestsTestCase::test_basic_building test_requests.py::RequestsTestCase::test_cannot_send_unprepared_requests test_requests.py::RequestsTestCase::test_cookie_parameters test_requests.py::RequestsTestCase::test_entry_points test_requests.py::RequestsTestCase::test_get_auth_from_url test_requests.py::RequestsTestCase::test_hook_receives_request_arguments test_requests.py::RequestsTestCase::test_http_error test_requests.py::RequestsTestCase::test_invalid_url test_requests.py::RequestsTestCase::test_links test_requests.py::RequestsTestCase::test_no_content_length test_requests.py::RequestsTestCase::test_params_are_added_before_fragment test_requests.py::RequestsTestCase::test_path_is_not_double_encoded test_requests.py::RequestsTestCase::test_response_is_iterable test_requests.py::TestCaseInsensitiveDict::test_contains test_requests.py::TestCaseInsensitiveDict::test_delitem test_requests.py::TestCaseInsensitiveDict::test_docstring_example test_requests.py::TestCaseInsensitiveDict::test_get test_requests.py::TestCaseInsensitiveDict::test_getitem test_requests.py::TestCaseInsensitiveDict::test_iter test_requests.py::TestCaseInsensitiveDict::test_iterable_init test_requests.py::TestCaseInsensitiveDict::test_kwargs_init test_requests.py::TestCaseInsensitiveDict::test_mapping_init test_requests.py::TestCaseInsensitiveDict::test_preserve_key_case test_requests.py::TestCaseInsensitiveDict::test_update_retains_unchanged
++ : '>>>>> End Test Output'
++ git checkout ab36f3cc6f91f1e4903a3f4b31501cb7fefe4555 test_requests.py
+Updated 1 path from 3fc6648b

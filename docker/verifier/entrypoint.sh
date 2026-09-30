@@ -14,13 +14,15 @@ set -e
 cp -r /base "$HOME/scratch"
 cd "$HOME/scratch"
 
-if ! patch --quiet --strip=1 --forward --input /candidate/patch.diff; then
+if ! patch --quiet --strip=1 --forward --batch --fuzz=0 --reject-file=- \
+    --no-backup-if-mismatch --input /candidate/patch.diff; then
     echo "AEGIS_VERIFIER: patch did not apply cleanly" >&2
     exit 2
 fi
 
-if ! python -c "import app" > /dev/null 2>&1; then
+if ! python -c "import app" > "$HOME/build.log" 2>&1; then
     echo "AEGIS_VERIFIER: patched source failed to import" >&2
+    tail -c 2000 "$HOME/build.log" >&2
     exit 2
 fi
 

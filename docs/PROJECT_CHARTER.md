@@ -2,14 +2,14 @@
 
 ## Working identity
 
-- **Working name:** Aegis Defender
+- **Public name:** Kavryn (formerly Aegis Defender), owner-approved 2026-10-01
 - **Nature:** independent, non-hackathon research and engineering project
 - **Not:** a hackathon submission, a generic pentesting bot, or an unrestricted autonomous operator
 - **One-line thesis:** a reusable runtime should let autonomous agents propose consequential work without granting unconditional authority; actions must be scoped, policy-checked, isolated, independently verified, reversible where possible, and evidence-bearing. Cyber defense is the first demanding reference application.
 
-The project governs execution, not cognition. It is not intended to replace LangGraph, OpenAI/Anthropic agent SDKs, or other agent loops. Those may eventually submit typed actions to the runtime. The current repository name is provisional and will not be changed until a deliberate naming review.
+The project governs execution, not cognition. It is not intended to replace LangGraph, OpenAI/Anthropic agent SDKs, or other agent loops. Those may submit typed actions to the runtime through the experimental Kavryn SDK. Historical Aegis evidence/schema identifiers remain unchanged.
 
-The name is still provisional. “ASTRA” is intentionally not used because it belongs to the separate reference project and now also conflicts with an OpenAI cyber model name.
+Kavryn replaces the provisional name. “ASTRA” remains a separate reference project, not a second architecture.
 
 ## Mission
 

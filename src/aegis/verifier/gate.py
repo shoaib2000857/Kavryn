@@ -18,7 +18,7 @@ __all__ = ["evaluate_assurance"]
 # "the patch itself is bad" -- these route to CONTROL_FAILURE, not
 # REJECTED (docs/WORKFLOWS.md: "Evidence integrity failure ->
 # CONTROL_FAILURE and case stop").
-_INTEGRITY_CHECK_IDS = frozenset({"source_integrity"})
+_INTEGRITY_CHECK_IDS = frozenset({"source_integrity", "diff_integrity"})
 
 
 def evaluate_assurance(checks: tuple[CheckResult, ...]) -> AssuranceOutcome:

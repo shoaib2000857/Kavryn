@@ -286,10 +286,22 @@ def run_case(case_id: str, deps: CaseDependencies) -> CaseTrace:
     trace.advance(Trigger.ADVANCE, "vulnerable component localized")
 
     for attempt in range(1, deps.max_repair_attempts + 1):
-        candidate = deps.generate_candidate()
+        try:
+            candidate = deps.generate_candidate()
+        except Exception as exc:
+            trace.note(f"candidate generation failed ({type(exc).__name__}); containment retained")
+            return trace.halt("candidate generation failed; no deployment attempted")
+        if candidate.case_id != case_id:
+            trace.note("candidate belongs to a different case; fail closed")
+            return trace.halt("cross-case repair candidate rejected")
         trace.note(f"candidate {candidate.id} generated (attempt {attempt})")
         trace.advance(Trigger.ADVANCE, f"verifying candidate {candidate.id}")
-        outcome = deps.verify_candidate(candidate)
+        try:
+            outcome = deps.verify_candidate(candidate)
+        except Exception as exc:
+            trace.note(f"candidate verification failed ({type(exc).__name__}); fail closed")
+            trace.advance(Trigger.INSUFFICIENT_EVIDENCE, "independent verifier unavailable")
+            return trace.halt("candidate verification failed; no deployment attempted")
         trace.note(f"candidate {candidate.id} outcome: {outcome.value}")
 
         if outcome is AssuranceOutcome.VERIFIED:

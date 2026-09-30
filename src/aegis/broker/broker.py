@@ -17,13 +17,14 @@ silently.
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from itertools import count
 from threading import RLock
+from uuid import uuid4
 
 from aegis.broker.adapter import AdapterResult, ParameterValidationError, validate_parameters
 from aegis.broker.registry import AdapterRegistry, UnknownAdapterError
-from aegis.core.actions import ActionDefinition
+from aegis.core.actions import ActionDefinition, ActionSideEffect, action_definition_digest
 from aegis.core.capability import Capability, CapabilityAuthority, capability_parameters_digest
+from aegis.core.journal import TransactionJournal
 from aegis.core.transaction import ActionTransaction, TransactionState
 from aegis.domain.action import ActionRequest
 from aegis.domain.audit import AuditEvent, AuditEventType
@@ -73,6 +74,7 @@ class ActionBroker:
         capabilities: CapabilityAuthority | None = None,
         capability_ttl_seconds: int = 60,
         behavioral_monitor: BehavioralMonitor | None = None,
+        journal: TransactionJournal | None = None,
     ) -> None:
         if capability_ttl_seconds <= 0:
             raise ValueError("capability_ttl_seconds must be positive")
@@ -81,14 +83,97 @@ class ActionBroker:
         self._artifacts = artifacts
         self._capabilities = capabilities or CapabilityAuthority()
         self._behavioral_monitor = behavioral_monitor or BehavioralMonitor()
+        self._journal = journal
         self._capability_ttl = timedelta(seconds=capability_ttl_seconds)
         self._usage: dict[str, BudgetUsage] = {}
-        self._audit_seq = count(1)
         self._transactions: dict[str, ActionTransaction] = {}
         self._transaction_lock = RLock()
 
+    def unresolved_effects_for_case(self, case_id: CaseId) -> tuple[ActionTransaction, ...]:
+        """Return journaled mutations whose final external state is not established.
+
+        The journal is optional. No automatic retry, rollback, or clearance is
+        inferred from a snapshot; an operator must reconcile the target.
+        """
+        if self._journal is None:
+            return ()
+        unresolved: list[ActionTransaction] = []
+        for tx in self._journal.transactions_for_case(case_id):
+            if tx.state in {TransactionState.ROLLED_BACK, TransactionState.COMMITTED}:
+                continue
+            if not any(
+                transition.to_state is TransactionState.EXECUTING for transition in tx.transitions
+            ):
+                continue
+            try:
+                definition = self._registry.action_definition(tx.action_request.action_type)
+            except KeyError:
+                unresolved.append(tx)
+                continue
+            if (
+                tx.action_definition_digest is None
+                or tx.action_definition_digest != action_definition_digest(definition)
+            ):
+                unresolved.append(tx)
+                continue
+            if any(effect is not ActionSideEffect.READ for effect in definition.side_effects):
+                unresolved.append(tx)
+        return tuple(unresolved)
+
     def usage_for(self, case_id: CaseId) -> BudgetUsage:
-        return self._usage.get(case_id, BudgetUsage())
+        usage = self._usage.get(case_id, BudgetUsage())
+        if self._journal is None:
+            return usage
+        # A process restart must not reset the tool-call budget. A journaled
+        # EXECUTING transition is counted even if the worker/result was lost.
+        # Other budget dimensions remain process-local until separately metered.
+        recorded_calls = sum(
+            any(transition.to_state is TransactionState.EXECUTING for transition in tx.transitions)
+            for tx in self._journal.transactions_for_case(case_id)
+        )
+        return usage.model_copy(update={"tool_calls": max(usage.tool_calls, recorded_calls)})
+
+    def _permits_pending_rollback(
+        self,
+        request: ActionRequest,
+        parent: ActionTransaction | None,
+        unresolved: tuple[ActionTransaction, ...],
+        *,
+        case: Case,
+        policy_version: str,
+    ) -> bool:
+        """Permit only the live coordinator's exact registered compensation.
+
+        This exemption never restores a transaction after restart or bypasses
+        normal scope, approval, budget, capability, or adapter checks.
+        """
+        if parent is None or len(unresolved) != 1 or unresolved[0].id != parent.id:
+            return False
+        stored = self._transactions.get(parent.id)
+        if (
+            not self._same_transaction_snapshot(stored, parent)
+            or parent.state is not TransactionState.ROLLING_BACK
+            or parent.case_id != case.id
+            or parent.scope_digest != case.scope_digest
+            or parent.policy_version != policy_version
+            or request.case_id != parent.case_id
+            or request.role is not ActorRole.CONTROL_PLANE
+            or request.target_ref != parent.action_request.target_ref
+            or request.parameters.get("rollback_of") != parent.action_request.id
+            or request.id == parent.action_request.id
+        ):
+            return False
+        try:
+            definition = self._registry.action_definition(parent.action_request.action_type)
+            rollback_definition = self._registry.validate_request(request)
+        except (KeyError, ValueError):
+            return False
+        return bool(
+            definition.reversible
+            and definition.rollback_action_type == request.action_type
+            and parent.action_definition_digest == action_definition_digest(definition)
+            and rollback_definition.verification.required
+        )
 
     def advance_transaction(
         self,
@@ -104,6 +189,15 @@ class ActionBroker:
             if not self._same_transaction_snapshot(stored, transaction):
                 raise BrokerError("transaction snapshot is stale or was not issued by this broker")
             updated = transaction.transition_to(next_state, at=now, reason=reason)
+            terminal = next_state in {
+                TransactionState.DENIED,
+                TransactionState.ROLLED_BACK,
+                TransactionState.COMMITTED,
+                TransactionState.ESCALATED,
+                TransactionState.CONTROL_FAILURE,
+            }
+            if self._journal is not None and not terminal:
+                self._journal.record_transaction(updated)
             self._append_audit(
                 case_id=transaction.case_id,
                 now=now,
@@ -113,6 +207,8 @@ class ActionBroker:
                 subject_ref=f"transaction://{transaction.case_id}/{transaction.id}",
                 summary=f"{transaction.state.value}->{next_state.value}: {reason[:300]}",
             )
+            if self._journal is not None and terminal:
+                self._journal.record_transaction(updated)
             self._transactions[transaction.id] = updated
         return updated
 
@@ -125,6 +221,7 @@ class ActionBroker:
             stored is not None
             and stored.case_id == candidate.case_id
             and stored.action_request == candidate.action_request
+            and stored.action_definition_digest == candidate.action_definition_digest
             and stored.scope_digest == candidate.scope_digest
             and stored.policy_version == candidate.policy_version
             and stored.state is candidate.state
@@ -177,6 +274,7 @@ class ActionBroker:
         transaction_id: str | None = None,
         approval: Approval | None = None,
         prior_transaction: ActionTransaction | None = None,
+        rollback_for: ActionTransaction | None = None,
     ) -> BrokerOutcome:
         usage = self.usage_for(case.id)
         candidate_capability_ref = f"capability://{case.id}/{decision_id}"
@@ -184,6 +282,25 @@ class ActionBroker:
             prior_transaction.id if prior_transaction is not None else request.id
         )
         with self._transaction_lock:
+            unresolved = self.unresolved_effects_for_case(case.id)
+            if unresolved and not self._permits_pending_rollback(
+                request, rollback_for, unresolved, case=case, policy_version=policy_version
+            ):
+                self._append_audit(
+                    case_id=case.id,
+                    now=now,
+                    event_type=AuditEventType.POLICY_DECISION_RECORDED,
+                    actor_id="control:recovery-guard",
+                    role=ActorRole.CONTROL_PLANE,
+                    subject_ref=f"action-request://{case.id}/{request.id}",
+                    summary=(
+                        "new action blocked: unresolved journaled mutation "
+                        "requires external-state reconciliation"
+                    ),
+                )
+                raise BrokerError(
+                    "case has an unresolved journaled mutation; reconcile external state first"
+                )
             if prior_transaction is not None:
                 stored = self._transactions.get(bound_transaction_id)
                 if (
@@ -206,10 +323,16 @@ class ActionBroker:
             else:
                 if bound_transaction_id in self._transactions:
                     raise BrokerError("transaction identifier has already been used")
+                if (
+                    self._journal is not None
+                    and self._journal.transaction_for_id(bound_transaction_id) is not None
+                ):
+                    raise BrokerError("transaction identifier has already been journaled")
                 transaction = ActionTransaction(
                     id=bound_transaction_id,
                     case_id=case.id,
                     action_request=request,
+                    action_definition_digest=self._definition_digest(request.action_type),
                     scope_digest=case.scope_digest,
                     policy_version=policy_version,
                     created_at=now,
@@ -218,6 +341,8 @@ class ActionBroker:
                     if approval is not None
                     else None,
                 )
+                if self._journal is not None:
+                    self._journal.record_transaction(transaction)
                 self._transactions[bound_transaction_id] = transaction
 
         def advance(next_state: TransactionState, reason: str) -> None:
@@ -228,6 +353,15 @@ class ActionBroker:
                     raise BrokerError("transaction snapshot is stale during broker execution")
                 previous_state = transaction.state
                 updated = transaction.transition_to(next_state, at=now, reason=reason)
+                terminal = next_state in {
+                    TransactionState.DENIED,
+                    TransactionState.ROLLED_BACK,
+                    TransactionState.COMMITTED,
+                    TransactionState.ESCALATED,
+                    TransactionState.CONTROL_FAILURE,
+                }
+                if self._journal is not None and not terminal:
+                    self._journal.record_transaction(updated)
                 self._append_audit(
                     case_id=case.id,
                     now=now,
@@ -237,6 +371,8 @@ class ActionBroker:
                     subject_ref=f"transaction://{case.id}/{bound_transaction_id}",
                     summary=(f"{previous_state.value}->{next_state.value}: {reason[:300]}"),
                 )
+                if self._journal is not None and terminal:
+                    self._journal.record_transaction(updated)
                 transaction = updated
                 self._transactions[bound_transaction_id] = transaction
 
@@ -381,7 +517,36 @@ class ActionBroker:
         )
 
         advance(TransactionState.EXECUTING, "typed adapter execution started")
-        result = adapter.run(request, capability_ref=decision.capability_ref)
+        try:
+            result = adapter.run(request, capability_ref=decision.capability_ref)
+        except Exception as exc:
+            # The adapter may have changed external state before raising. Do not
+            # classify this as an ordinary denied/failed action or retry it.
+            # The caller must investigate the unknown effect independently.
+            advance(
+                TransactionState.CONTROL_FAILURE,
+                f"adapter raised {type(exc).__name__}; external effect unknown",
+            )
+            self._append_audit(
+                case_id=case.id,
+                now=now,
+                event_type=AuditEventType.TOOL_RUN_RECORDED,
+                actor_id=f"worker:{request.adapter}",
+                role=ActorRole.WORKER,
+                subject_ref=f"tool-run://{case.id}/{request.id}",
+                summary=(
+                    f"adapter={request.adapter} exit_status=control_failure "
+                    f"error_type={type(exc).__name__} external_effect=unknown"
+                ),
+            )
+            self._usage[case.id] = usage.model_copy(update={"tool_calls": usage.tool_calls + 1})
+            return BrokerOutcome(
+                decision=decision,
+                result=None,
+                capability=capability,
+                transaction=transaction,
+                monitoring=monitoring,
+            )
         if result.exit_status == "success":
             try:
                 self._registry.validate_output(action_definition, result.output)
@@ -422,6 +587,13 @@ class ActionBroker:
             monitoring=monitoring,
         )
 
+    def _definition_digest(self, action_type: str) -> Digest | None:
+        try:
+            definition = self._registry.action_definition(action_type)
+        except KeyError:
+            return None
+        return action_definition_digest(definition)
+
     def _append_audit(
         self,
         *,
@@ -433,7 +605,8 @@ class ActionBroker:
         subject_ref: str,
         summary: str,
     ) -> None:
-        event_id = f"audit-{case_id}-{next(self._audit_seq)}"
+        # Process-local counters repeat after restart when the sink is durable.
+        event_id = f"audit-{case_id}-{uuid4().hex}"
         prior = self._audit.last_event(case_id)
         event = AuditEvent(
             id=event_id,

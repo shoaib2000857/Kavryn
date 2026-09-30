@@ -1,9 +1,59 @@
 # Active implementation queue
 
-Updated: 2026-09-25. This is the operational task list for the current flagship direction. Status is tied to code/tests, not aspiration.
+Updated: 2026-09-30. This is the operational task list for the current flagship direction. Status is tied to code/tests, not aspiration.
 
 ## Completed this session
 
+### 2026-10-01 — Kavryn SDK distribution
+
+- [x] Confirm Kavryn name and owner-approved Apache-2.0; add copyright,
+  NOTICE, contributor guidance and optional CITATION.cff without extra restrictions.
+- [x] Add public `kavryn` SDK/CLI/module invocation and type markers, retaining
+  `aegis` imports, commands and historical schema IDs.
+- [x] Build wheel/source archives with explicit inclusion rules, validate
+  payloads, and test fresh installation outside the checkout.
+- [x] Add and execute non-overwriting local install/demo scripts; no models,
+  Docker permissions, credential sourcing or sudo introduced.
+- [x] Add CI archive checks, isolated installed-wheel smoke and downloadable
+  workflow artifacts; model tests remain opt-in.
+- [ ] Push verified changes and rename GitHub repository (owner authorized).
+- [ ] PyPI publication and tagged release/security contact remain separate;
+  do not claim a registry download or remote CI success before it exists.
+
+Older reliability checkpoints below are historical.
+
+Latest verification for this reliability round: **579 unit tests passed; 27 Docker
+integrations passed / 2 live-model tests skipped (154.60s)**; Ruff lint/244-file
+format check, strict mypy/203 source files, 19 schemas and diff checks passed.
+The first integration run exposed one synthetic test-gaming failure; the defect
+and corrected rerun are documented rather than omitted.
+
+- [x] Model-independent repair transport: splice localized replacements into the trusted whole file; generate missing-newline markers; enforce source/diff integrity, safe paired headers, no fuzzy application, no symlinks/special files, and failure cleanup.
+- [x] Optional durable, journal/audit-linked execution receipts; explicit receipt-write failure without repeating committed execution. SQL-read-only journal inspection does not clear quarantine.
+- [x] Runnable model-free SDK simulation for verified commit/rollback and `aegis doctor` prerequisite/storage diagnostics. These are not capability benchmarks.
+- [x] Strengthen the owned hidden exploit replay and correct a placeholder-digest integration helper exposed by the new checks. Preserve the existing adversarial acceptance outcomes.
+- [ ] **Deferred by owner for the next round:** stronger-model runs, matched basic-harness comparisons, larger official benchmarks and learned-monitor calibration. No model endpoints contacted in this reliability round.
+- [ ] **Still open:** safe post-crash reconciliation/clearance, complete durable authority/budgets, hardened service/process separation and isolation, broader supported repairs, owner-selected license/release policy. Do not mark the full flagship production-ready.
+
+Implementation and runnable commands: [Reliability and operations](RELIABILITY_AND_OPERATIONS.md).
+
+- [x] Audit both storage partitions and identify optional cleanup candidates without deleting user assets. Export two newly downloaded SWE task images, then remove only those images and our temporary containers, restoring 4.3 GB system free space.
+- [x] Add brokered fixed-plan rootless gVisor evaluation and run two original SWE-bench tasks' required tests with unmodified official grading. Qwen candidate 1142 passed six tests; 1339 failed patch application. Third predeclared task not run; no full-score or quality-uplift claim. See `STORAGE_AND_SWE_PILOT.md`.
+
+- [x] Add installed read-only `aegis audit verify` and `aegis receipt verify` commands with optional external-head checks and receipt/audit linkage checks. Hash integrity is not writer authentication or safety proof; no action execution is exposed.
+
+- [x] Switch current experiments to installed local Ollama `qwen2.5:7b`, leaving the hosted endpoint alone. Add opt-in schema-constrained repair and at most one public Python syntax-feedback retry; no code execution or hidden-test feedback.
+- [x] Complete the actual model-driven object-authorization incident-to-recovery integration. Preserve the preceding failed rollout record; fix the 404-only probe mismatch and test both 403/404 denial contracts.
+- [x] Add and run a paired identical-candidate admission ablation: one verified candidate, one syntax-broken candidate; gate admits only the verified one. This does not establish coding-quality uplift or a comparison with a test-aware CLI.
+- [x] Run bounded Ollama triage on the official CDB public sample and score it with the pinned unmodified scorer: 3.2621% coverage, 28/3,912 flags, 126 submissions. This is worse than the 5.0577% rule baseline; retain it honestly. See `LOCAL_EVALUATION.md` for artifacts/limits.
+
+- [x] Add a separately gated full object-authorization case using hosted model containment reasoning and generated repair through clean-room verification and brokered deployment; add safe repair-generation/verifier failure traces and cross-case candidate rejection. The default Docker case passed; the one live attempt halted before mutation because the configured ngrok tunnel returned HTTP 404/`ERR_NGROK_3200`. Full live model completion remains unverified.
+- [x] Fix the journal guard blocking live verified rollback. Permit only the current coordinator's registered same-target compensation; keep ordinary policy/approval/capability checks. Test wrong role/target/action/parent, stale/restarted snapshots, missing approval, and failed restoration. Docker containment and deployment rollback now run with both memory and SQLite storage. Post-crash reconciliation remains open.
+- [x] Bind journaled transactions to a stable full-action-definition digest so changing an action from write to read cannot bypass restart quarantine; reject digest changes across revisions and prove the opt-in SQLite journal in the real Docker full case across reopen. This remains an opt-in guard, not automatic crash recovery.
+- [x] Add optional append-only SQLite transaction revisions and broker restart quarantine: a mutation that reached `EXECUTING` without recorded commit/rollback blocks new case actions, including post-dispatch `CONTROL_FAILURE`; read-only actions do not. Reconstruct tool-call budget usage after restart. Test schema upgrade, reopening, tamper/sequence rejection, replay, budget continuity, and refusal audit. The journal itself does not independently prove verification; this is not automatic reconciliation or complete durable authority.
+- [x] Fail closed when a dispatched typed adapter raises: audit unknown effect as `CONTROL_FAILURE`, charge the attempted tool call, issue a coordinator receipt, and reject reuse of the transaction ID. This is exception handling, not process-crash recovery or verified rollback.
+- [x] Run a reproducible external-dataset **component baseline** on the Cyber Defense Benchmark public sample using local deterministic command rules, not the hosted model. It produced 250 timestamp submissions from 155,350 events, then the unmodified pinned upstream scorer reported 5.06% coverage and 80/3,912 flagged events. Predictions were generated without hidden flags. This is one sample, not the full benchmark or an agent score.
+- [x] Add an opt-in SQLite implementation of the artifact-store and audit-sink interfaces; verify digests/chains on read and append, support broker append after restart, and reject tested corruption. ADR-055 subsequently added transaction snapshots; authority is still in-process and the store is not writer-authenticated.
 - [x] Add a broker-fed behavioral monitoring baseline; it reports bounded-window denials, repeated denied action types, higher-risk requests, and pending approvals as advisory metadata only. Its weights are uncalibrated and it cannot influence authorization.
 - [x] Make investigation a required typed case dependency; the runner halts before containment on a missing, empty, failed, or cross-case hypothesis report and includes valid hypotheses in JSON/human reports.
 - [x] Move range investigation from integration-only scaffolding into `aegis.investigation.range`; the reference service broker-runs both Semgrep and fixed-proxy telemetry reads, stores deployment provenance, and emits the correlated hypothesis.
@@ -13,7 +63,7 @@ Updated: 2026-09-25. This is the operational task list for the current flagship 
 - [x] Add a deterministic same-case/source-version telemetry-to-finding correlator that emits evidence-linked hypotheses; normalize scanner paths relative to the worker mount and reject cross-case/source-mismatch inputs. The fixed-range workflow uses it; generalization and durable evidence retrieval remain open.
 - [x] Validate local range service image/container/network identifiers, mount paths/modes, environment keys/values, and published-port ranges before constructing Docker arguments; add negative tests. This is configuration hardening, not Docker isolation or image authenticity.
 - [x] Add adversarial control tests: a poisoned instruction embedded in an action rationale and a provider proposal for explicitly denied `host.shell` both fail at the deterministic broker before adapter dispatch; the case escalates without containment. This proves policy enforcement for this proposal, not general model prompt-injection resistance.
-- [x] Add a second owned synthetic vulnerability fixture (broken object-level authorization), reproduce cross-owner access in a constrained network-disabled Docker container, and verify known-good/exploit-preserving candidates with hidden tests in the independent clean-room verifier. No model-generated repair result exists.
+- [x] Add a second owned synthetic vulnerability fixture (broken object-level authorization), reproduce cross-owner access in a constrained network-disabled Docker container, and verify known-good/exploit-preserving candidates with hidden tests in the independent clean-room verifier. Later, one separate hosted Layer-0 candidate on this fixture passed verification; the full incident integration still uses an oracle patch.
 - [x] Run the object-authorization fixture through the full brokered incident workflow: real proxy replay, brokered scan and bounded telemetry, route/source-linked hypothesis, approval-gated synthetic Bob-token containment, independent clean-room oracle-patch verification, brokered image rollout, attack/benign recovery replay, and audit receipt. This is a deterministic integration test, not a model-generated repair score.
 - [x] Generalize the local-range hooks needed by that second case: bounded owner-configured containment regexes/rule IDs, trusted route-to-source bindings, and scenario-specific incident summaries. Model output cannot change these adapter settings.
 
@@ -48,6 +98,15 @@ Updated: 2026-09-25. This is the operational task list for the current flagship 
 
 ## Current verification checkpoint
 
+- Latest offline pilot checkpoint: **554 unit tests passed** (3.27s); Ruff format **240 files**, lint, strict mypy **200 files**, **19 schemas**, and `git diff --check` passed. Two rootless SWE required-test environments exercised; exact passes/failures and prior setup attempts retained in `STORAGE_AND_SWE_PILOT.md`. Existing Docker fixture suite was not rerun for the new benchmark-only path.
+
+- Model-case connection/failure traces (2026-09-30): **530 unit tests passed; 26 real-Docker integrations passed, 2 credential/opt-in model cases skipped** (146.71s). Ruff lint/format (227 files), strict mypy (189 source files), 19 schemas, and diff checks passed. Separately, the enabled live qwen38 model-repair case **failed** (7.23s) because the configured tunnel returned HTTP 404/`ERR_NGROK_3200`; no mutation or candidate occurred. Local green checks do not override that failed live attempt.
+- Live rollback with journal guard (2026-09-30): **527 unit tests passed; 26 real-Docker integrations passed, 1 credential-gated live-model test skipped** (140.31s). Ruff lint/format (227 files), strict mypy (189 source files), 19 schemas, and `git diff --check` passed. Ten new unit cases cover compensation boundaries and receipts; the four focused Docker rollback cases passed in 15.63s. Both storage modes now independently verify containment and deployment restoration. Post-crash clearance remains unimplemented.
+- Action-contract-bound journal completion (2026-09-30): **517 unit tests passed; 24 real-Docker integrations passed, 1 credential-gated live-model test skipped** (139.25s). Ruff lint/format (226 files), strict mypy (188 source files), all 19 schemas, and `git diff --check` passed. The added full-case integration uses the opt-in SQLite artifact/audit/journal store and reopens it; default cases still use memory. This is a tested research vertical, not production readiness or a standard model-agent benchmark score.
+- Transaction-journal/restart-quarantine final checks (2026-09-30): **516 unit tests passed**; real-Docker integration **23 passed, 1 credential-gated hosted-model test skipped** (122.12s). Ruff lint/format (**226 files**), strict mypy (**188 source files**), all **19 schemas**, and `git diff --check` passed. Focused tests cover v1-to-v2 store upgrade, corrupted/duplicate revisions, mutation quarantine after restart and after adapter exception, read-only continuation, ID replay, and tool-call budget continuity. The reference Docker case still uses its existing in-memory broker by default; this verifies compatibility, not live crash recovery.
+- Adapter-exception hardening final checks (2026-09-30): **509 unit tests passed**; real-Docker integration **23 passed, 1 credential-gated hosted-model test skipped** (127.04s). Ruff lint/format (**225 files**), strict mypy (**187 source files**), all **19 schemas**, and `git diff --check` passed. This tests ordinary adapter exceptions, not process termination or recovery.
+- External sample baseline final checks (2026-09-30): **507 unit tests passed**; Ruff lint/format (**225 files**), strict mypy (**187 source files**), all **19 schemas**, and `git diff --check` passed. Pinned upstream CDB sample scoring was rerun from the recorded predictions and reproduced 0.0505767050 coverage, 80/3,912 flags, and 250 submissions. Docker integration was last run after the SQLite change and before this benchmark-only addition: **23 passed, 1 credential-gated skip** (299.33s); no Docker paths changed in the benchmark addition.
+- Optional SQLite evidence backend checkpoint (2026-09-30): **504 unit tests passed**; real-Docker integration **23 passed, 1 credential-gated hosted-model test skipped** (299.33s); Ruff lint/format (**221 files**), strict mypy (**183 source files**), all **19 schemas**, and `git diff --check` passed. This adds raw audit/artifact persistence only, not durable transaction/authority state or a standard benchmark score.
 - Latest provider change: `HostedPatchProvider` now requests complete replacement source for the one allowlisted file, then constructs a unified diff locally (avoids model-generated hunk-count corruption). It explicitly sets `reasoning_effort=none`, `max_tokens=8192`, rejects truncated/no-op responses, and records finish reason/token usage when supplied. The v2 object-authorization candidate passed independent clean-room verification; the v2 path-traversal response was unchanged and rejected before verification.
 - Latest complete local verification after provider change and request-boundary regression test: **498 unit tests passed**; `ruff check .`, `ruff format --check .` (**219 files**), strict `mypy` (**181 source files**), all **19 schemas** current, and `git diff --check` passed. Full Docker-backed integration: **23 passed, 1 credential-gated hosted-model test skipped** (116.65s; integration was unchanged by the added unit test). The skipped integration needs the pytest process to receive `LLM_URL`/`LLM_API_KEY`; separate synthetic-only smoke and patch pilot calls succeeded using the local env file.
 
@@ -65,7 +124,7 @@ Updated: 2026-09-25. This is the operational task list for the current flagship 
 - Sandbox backend status: the core protocol currently governs the one-shot analysis worker only. The range service/network/deployment Docker helpers still use a separate command-runner path; no alternate backend is implemented and the protocol itself adds no isolation.
 - The sandbox extraction also passed 4 focused real-Docker analysis-worker integration tests.
 - Corrected-key model repair results: prompt v1 produced two malformed model-authored diffs rejected at build; prompt v2 produced a verified object-authorization patch (public, exploit-replay, and regression checks passed) and an unchanged path-traversal response rejected before verification. These are owned-fixture pilot outcomes, not general coding-quality or standard benchmark scores.
-- No standard external benchmark has been run. Current free disk is ~52 GB (below SWE-bench's stated 120 GB baseline and AutoPatchBench sample's ~500 GB recommendation). Vul4J's upstream image bundles the legacy JDK matrix, so host Java version is not itself a blocker; current blockers are rootful-only isolation, no Aegis benchmark adapter, and unavailable hosted patch inference. Current internal fixture results are not standard benchmark scores.
+- One official-scored external public **sample** has now been run as a deterministic CDB component baseline; no standard external **agent** or repair benchmark has been run. Current free disk is ~46 GB (below SWE-bench's stated 120 GB baseline and AutoPatchBench sample's ~500 GB recommendation). Vul4J's upstream image bundles the legacy JDK matrix, so host Java version is not itself a blocker; current blockers include rootful-only isolation, no Aegis Vul4J adapter, and the current synthetic-only hosted-data policy. Internal fixture results are not standard benchmark scores.
 - Benchmark selection has been refreshed: Vul4Py is the leading Python paired-oracle candidate, but the located repo's provenance/terms are unconfirmed and its runner is not safe to execute under the current boundary; see OQ-008. VulnGym v0.1.4 remains a repository-localization candidate (408 entries, 393 human-audited, CC-BY-4.0), but its evaluator reports recall/coverage only. Neither has been run by Aegis.
 - VulnGym evaluator compatibility was checked at upstream commit `cd69f7e163e08485ab5496115ae03439cda6e27e` using metadata only: the official matcher failed to match 44 documented range-line entries even when predictions copied the ground truth, yielding 364/408 entries and 171/184 advisories on this oracle sanity input. This is not an Aegis score; see the machine-readable diagnostic linked from `BENCHMARKS_AND_DATASETS.md`.
 - Added a typed JSONL parser and supplemental range-aware VulnGym metric/CLI; it is explicitly marked non-official, never reports precision for the recall-only dataset, and does not fetch or execute benchmark repositories.
@@ -73,6 +132,17 @@ Updated: 2026-09-25. This is the operational task list for the current flagship 
 - Latest range-service hardening rerun: **478 unit tests passed**; Ruff check, 208-file format check, strict mypy (175 source files), 18 schemas, and `git diff --check` passed. Docker integration: **20 passed, 1 credential-gated hosted-model test skipped** (128.86 seconds). This verifies local range compatibility, not hostile-container isolation.
 
 ## Next implementation priorities
+
+### Next bounded evaluation milestone
+
+- [ ] Reconstruct canonical whole-file diffs from localized model context, eliminating fragment-EOF application ambiguity; regression-test without gold/hidden feedback.
+- [ ] Run the third predeclared task only after checking both disks; export each image and remove only newly created temporary assets rather than accumulating Docker image data.
+- [ ] Expand to a representative predeclared sample and genuinely execute an equal-budget basic-agent baseline. Separate patch capability, control outcomes and overhead; no headline score from two tasks.
+- [ ] Obtain owner selection before deleting existing CUDA images, caches or stale build trees; cleanup candidates are listed but not authorized for deletion.
+
+### Release-readiness reality check (2026-09-30)
+
+The current code is suitable for an **experimental local-range release**, not a complete autonomous defender or production agent-runtime release. The shortest credible path is: (1) select a public license and release/security policy with the owner; (2) add a safe, independently verified quarantine-reconciliation flow and durable approvals/capabilities/receipts; (3) harden isolation and move remaining effectful Docker lifecycle paths behind the runtime; (4) run at least one licensed external repair benchmark and a model-driven defense benchmark with official scoring and reproducibility artifacts; (5) expand beyond two synthetic cases and test failures/adversarial inputs. The trajectory/hidden-state monitor is research work, not a shipped guardrail. None of these should be marked complete from internal fixture passes.
 
 - [x] Latest continuation: validate local range service configuration and container names before launch, stop, log, or inspect Docker operations. Focused service tests **29 passed**; full unit suite **478 passed**; static/schema checks passed; Docker integration **20 passed, 1 skipped**.
 
@@ -100,18 +170,25 @@ Updated: 2026-09-25. This is the operational task list for the current flagship 
 - [x] Add versioned typed action definitions describing inputs/outputs, risk, side effects, reversibility, resources, and expected verification; bind the catalog to adapter registration and enforce request/output contracts in the broker. Expected verifier identity is enforced; action-specific resource caps/retries remain follow-up gaps.
 - [x] Add versioned/schema-exported domain-neutral sandbox request/result models and move one-shot analysis-worker Docker execution behind the protocol.
 - [ ] Migrate range service/network/deployment lifecycle onto an appropriate backend interface; do not claim unavailable backends.
-- [x] Add stable per-case audit JSONL export/verification and document that local hash chains are tamper-evident, not immutable/authenticated. The audit source remains in-memory and no signing/anchor is provided.
-- [x] Add receipt generation linked to transaction, verifier evidence artifacts, and audit root (in-memory audit/artifact stores remain non-durable).
+- [x] Add stable per-case audit JSONL export/verification and document that local hash chains are tamper-evident, not immutable/authenticated. An optional SQLite store now persists raw audit events, but no signing/anchor is provided.
+- [x] Add receipt generation linked to transaction, verifier evidence artifacts, and audit root (raw audit/artifacts and transaction revisions can optionally persist in SQLite; authority and complete case recovery remain non-durable).
+- [ ] Add a trusted, independently verified reconciliation/clearance flow for quarantined mutations; do not simply delete or override journal history.
 - [x] Add transaction/capability schemas and contract tests to CI; the test suite asserts both contracts are registered and CI runs the schema-parity test.
 
 ### P3 — Strengthen the cyber-defense reference application
 
+Local update: the owner-authorized Ollama full case is now complete for the owned
+object-authorization fixture. The hosted rerun below is optional while its server
+is down; do not retry it or treat it as blocking further local implementation.
+External repair evaluation and stronger agent comparisons remain required.
+
+- [ ] Once the configured model tunnel is reachable, run the gated full incident-to-recovery model case and inspect the preserved trace/patch/check/audit record. No alias switching or retries for HTTP 404/401. The first attempt's tunnel-offline result is infrastructure evidence, not a model score.
 - [x] Integrate evidence correlation into the live case orchestrator; brokered Semgrep scan plus same-case telemetry/provenance are mandatory before containment.
-- [ ] Generalize durable retrieval for every event, normalized finding, and deployment-provenance reference (current store is in-memory).
+- [ ] Generalize durable retrieval for every event, normalized finding, and deployment-provenance reference (the optional SQLite backend currently stores only raw audit events and artifacts).
 - [x] Add a model-patch pilot selectable for two fixture-specific allowlisted files; no model execution/deployment authority was added. Corrected-key qwen38 inference ran on both fixtures; one candidate verified and one no-op was rejected.
 - [x] Generalize `scripts/bench_patch_repair.py` with explicit fixture selection and verify the second fixture's clean-room oracle pair; this remains a Layer-0 owned-fixture pilot, not a standard benchmark.
 - [x] Obtain working local endpoint configuration and run the Layer-0 generated-patch pilot through the clean-room verifier; results are fixture-specific and mixed (one verified, one rejected before verification).
-- [ ] Run an external standard repair/agent benchmark with a valid harness and report an official metric; do not infer this from the two local fixtures.
+- [ ] Run an external standard **repair or model-agent** benchmark with a valid harness and report an official metric; the CDB public-sample deterministic baseline does not satisfy this.
 - [x] Add a second owned synthetic scenario fixture, isolated vulnerable-baseline reproduction, and clean-room acceptance/rejection oracle pair.
 - [x] Generalize evidence collection and brokered response so the object-authorization scenario can run through the tested case lifecycle; broader durable/cross-source retrieval remains open.
 - [x] Add first adversarial prompt-injection/control tests for denied high-impact proposals; broader poisoned-source/log/tool-output cases remain open.

@@ -181,6 +181,10 @@ def _evaluation_record(
     model_generation_seconds: float | None,
     verifier_seconds: float | None,
     generation_result: PatchGenerationResult | None,
+    local: bool = False,
+    structured_output: bool = False,
+    provider_requests: int = 1,
+    public_syntax_retry: bool = False,
 ) -> BenchmarkRunRecord:
     revision, dirty = _repository_state()
     check_results = checks or ()
@@ -265,9 +269,9 @@ def _evaluation_record(
         ),
         _measured(
             "efficiency.provider_requests",
-            1,
+            provider_requests,
             "requests",
-            "One hosted patch-generation request was attempted",
+            "Recorded compatible-provider requests; retry token usage may be unavailable",
         ),
         (
             _measured(
@@ -343,10 +347,12 @@ def _evaluation_record(
         benchmark_version="1",
         scenario_id=scenario_id,
         scenario_version="1",
-        agent_mode=AgentMode.HOSTED_MODEL,
-        provider="openai-compatible-hosted",
+        agent_mode=AgentMode.LOCAL_MODEL if local else AgentMode.HOSTED_MODEL,
+        provider="ollama-compatible-local" if local else "openai-compatible-hosted",
         model=model,
-        prompt_version=PATCH_PROMPT_VERSION,
+        prompt_version=PATCH_PROMPT_VERSION
+        + ("-json-schema" if structured_output else "")
+        + ("-public-syntax-retry" if public_syntax_retry else ""),
         finish_reason=generation_result.finish_reason if generation_result else None,
         repository_revision=revision,
         working_tree_dirty=dirty,
@@ -385,6 +391,21 @@ def main() -> int:
     parser.add_argument("--out", type=Path, help="write the machine-readable result bundle")
     parser.add_argument("--timeout", type=int, default=180)
     parser.add_argument(
+        "--ollama",
+        action="store_true",
+        help="use local Ollama/qwen2.5:7b without hosted credentials",
+    )
+    parser.add_argument(
+        "--structured-output",
+        action="store_true",
+        help="request JSON-schema constrained output (requires provider support)",
+    )
+    parser.add_argument(
+        "--public-syntax-retry",
+        action="store_true",
+        help="allow at most one retry from Python syntax feedback, never hidden tests",
+    )
+    parser.add_argument(
         "--scenario",
         choices=tuple(SCENARIOS),
         default="path-traversal-v1",
@@ -395,12 +416,13 @@ def main() -> int:
     if not (scenario.source_dir / "app.py").is_file():
         parser.error(f"fixture source does not exist: {scenario.source_dir / 'app.py'}")
 
-    endpoint = os.environ.get("LLM_URL", "").strip()
-    api_key = os.environ.get("LLM_API_KEY", "")
-    model = os.environ.get("LLM_MODEL", "qwen38")
+    endpoint = "http://127.0.0.1:11434" if args.ollama else os.environ.get("LLM_URL", "").strip()
+    api_key = "ollama" if args.ollama else os.environ.get("LLM_API_KEY", "")
+    model = "qwen2.5:7b" if args.ollama else os.environ.get("LLM_MODEL", "qwen38")
     if not endpoint or not api_key:
         parser.error("hosted pilot requires LLM_URL and LLM_API_KEY in the environment")
     parsed = urlsplit(endpoint)
+    local = parsed.hostname in {"localhost", "127.0.0.1", "::1"}
     if parsed.scheme != "https" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
         parser.error("refusing to send the API key to a non-local HTTP endpoint")
     base_url = endpoint.rstrip("/")
@@ -426,10 +448,14 @@ def main() -> int:
     )
 
     started = time.perf_counter()
+    patch_provider = HostedPatchProvider(
+        config,
+        api_key=api_key,
+        structured_output=args.structured_output,
+        public_syntax_retry=args.public_syntax_retry,
+    )
     try:
-        generation_result = HostedPatchProvider(config, api_key=api_key).generate_with_metadata(
-            request
-        )
+        generation_result = patch_provider.generate_with_metadata(request)
         candidate = generation_result.candidate
     except HostedApiError as exc:
         result = {
@@ -438,7 +464,7 @@ def main() -> int:
             "not_a_standard_benchmark": True,
             "scenario": args.scenario,
             "case_id": request.case_id,
-            "provider": "openai-compatible-hosted",
+            "provider": "ollama-compatible-local" if local else "openai-compatible-hosted",
             "model": model,
             "outcome": "INFRASTRUCTURE_ERROR",
             "error": str(exc),
@@ -455,6 +481,10 @@ def main() -> int:
                 model_generation_seconds=None,
                 verifier_seconds=None,
                 generation_result=None,
+                local=local,
+                structured_output=args.structured_output,
+                provider_requests=patch_provider.last_request_count,
+                public_syntax_retry=args.public_syntax_retry,
             ).model_dump(mode="json"),
         }
         _emit_result(result, args.out)
@@ -466,7 +496,7 @@ def main() -> int:
             "not_a_standard_benchmark": True,
             "scenario": args.scenario,
             "case_id": request.case_id,
-            "provider": "openai-compatible-hosted",
+            "provider": "ollama-compatible-local" if local else "openai-compatible-hosted",
             "model": model,
             "outcome": "INVALID_MODEL_OUTPUT",
             "error": str(exc),
@@ -483,6 +513,10 @@ def main() -> int:
                 model_generation_seconds=None,
                 verifier_seconds=None,
                 generation_result=None,
+                local=local,
+                structured_output=args.structured_output,
+                provider_requests=patch_provider.last_request_count,
+                public_syntax_retry=args.public_syntax_retry,
             ).model_dump(mode="json"),
         }
         _emit_result(result, args.out)
@@ -514,7 +548,7 @@ def main() -> int:
         "not_a_standard_benchmark": True,
         "scenario": args.scenario,
         "case_id": request.case_id,
-        "provider": "openai-compatible-hosted",
+        "provider": "ollama-compatible-local" if local else "openai-compatible-hosted",
         "model": model,
         "model_generation_seconds": round(model_elapsed, 3),
         "source_digest": source_digest.model_dump(mode="json"),
@@ -539,6 +573,10 @@ def main() -> int:
             model_generation_seconds=model_elapsed,
             verifier_seconds=verifier_elapsed,
             generation_result=generation_result,
+            local=local,
+            structured_output=args.structured_output,
+            provider_requests=patch_provider.last_request_count,
+            public_syntax_retry=args.public_syntax_retry,
         ).model_dump(mode="json"),
     }
     _emit_result(success_result, args.out)

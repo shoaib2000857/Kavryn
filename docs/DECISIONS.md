@@ -2,6 +2,131 @@
 
 Accepted decisions guide implementation. Changes require a new entry; do not rewrite history without noting supersession.
 
+## ADR-068 — Apache-2.0 Kavryn SDK packaging and attribution
+
+- **Status:** Accepted, 2026-10-01. Owner approved Apache-2.0, credit preservation, pushing verified project changes and renaming the repository.
+- **Decision:** Publish Kavryn identity through distribution metadata, a public `kavryn` SDK facade, CLI entry point and `python -m kavryn`. Retain `aegis` imports/CLI and existing schemas/records. Package the existing runtime, not a new agent loop or a hidden architecture rewrite. Version 0.1.0 remains experimental/alpha.
+- **Attribution:** LICENSE/NOTICE and package authors name Shoaib Sadiq Salehmohamed; CITATION.cff encourages research citation. Do not claim Apache requires backlinks, stars, credit in every UI, or contributions back. No extra license restrictions are attached to NOTICE.
+- **Distribution safety:** Explicit source/wheel inclusion rules; archive checker rejects private/cache payload paths and requires typed SDK plus notices. Fresh-environment wheel smoke tests run outside the checkout. Install scripts use an operator-selected new virtual environment, no sudo/model download/Docker access, and no environment-file sourcing.
+- **Publication:** Owner authorized Git push and GitHub repository rename to Kavryn. CI builds checked downloadable workflow artifacts. PyPI publishing/credential setup and a tagged public release remain separate, unperformed steps.
+- **Threat impact:** No expansion of agent authority, target/network permissions, or secrets. Package installation/build uses existing package indexes. CI artifact hosting is a newly declared distribution path; it includes checked SDK archives, not benchmarks or credentials. In-process enforcement and production-hardening limits remain.
+
+## ADR-067 — Kavryn public project identity
+
+- **Status:** Accepted, 2026-10-01. Owner approved the proposed shorter name.
+- **Decision:** Adopt Kavryn as the public identity. Target distribution/import/CLI identifier is `kavryn`; existing code currently still uses `aegis` and public namespace/package migration is pending.
+- **Compatibility:** Preserve historical benchmark records and versioned schema/evidence identifiers; do not perform an unversioned mass replacement. No external repository rename or registry reservation has occurred. Preliminary naming checks are not trademark clearance.
+
+## ADR-066 — Withdraw premature GPL selection; license remains open
+
+- **Status:** Accepted correction, 2026-10-01; supersedes ADR-065.
+- **Decision:** The owner clarified that Linux was inspiration, not a direction to adopt its exact license. Remove only the draft LICENSE added by the agent, restore unlicensed package metadata and correct current docs. Nothing was publicly published under that draft in this workflow.
+- **Recommendation, not selection:** Apache-2.0 for a reusable agent-runtime SDK targeting broad adoption and contributor participation. It provides permissive copyright terms and an explicit, limited contributor patent grant, subject to its conditions; it does not compel private modifications to be upstreamed. MIT is a simpler permissive option; MPL-2.0 is an alternative when distributed modifications of covered files should remain open.
+- **Sources:** https://www.apache.org/licenses/LICENSE-2.0; https://opensource.org/license/mit; https://www.mozilla.org/en-US/MPL/2.0/FAQ/.
+- **Scope:** OQ-002 remains unresolved until explicit owner choice. No runtime behavior, permissions, dependencies, secrets, or release publication changed.
+
+## ADR-065 — Owner-selected GPL version 2 only
+
+- **Status:** Withdrawn by ADR-066, 2026-10-01. The initial Linux reference was misinterpreted as an exact license instruction; the owner clarified it was inspiration.
+- **Decision:** License original project code under GPL-2.0-only. Add the GPL version 2 text obtained from the official Linux source and update package metadata/README. Do not copy the Linux-specific syscall exception or silently grant an SDK linking exception. Third-party material retains its original terms.
+- **Source:** https://www.kernel.org/doc/html/latest/process/license-rules.html and https://raw.githubusercontent.com/torvalds/linux/master/LICENSES/preferred/GPL-2.0.
+- **Implication:** GPL copyleft applies to distributed derivative/combined works as specified by its terms; this is not a permissive SDK license. Commercial use is not categorically prohibited. Downstream integration compatibility and release dependency notices still need review.
+- **Scope:** No public upload, repository rename, namespace change, or package reservation. OQ-001 remains unresolved.
+
+## ADR-064 — Opt-in durable receipts and non-resuming local diagnostics
+
+- **Status:** Accepted, 2026-09-30, implementing the owner's model-independent reliability/operations request.
+- **Decision:** Add a `ReceiptStore` protocol and optional coordinator sink. SQLite schema 3 binds append-once receipts to terminal journal content and verified case audit roots. A receipt-write failure after terminal execution raises an explicit non-retry error; it does not pretend to undo a committed effect. Add SQL-read-only journal inspection, prerequisite diagnostics, and a clearly labelled in-memory SDK demo.
+- **Limits:** Receipt persistence is not atomic with external effects; hashes are not writer authentication. Inspection cannot reconcile targets, restore authority, or clear quarantine. OQ-007 remains open. No model calls or new model scores are required.
+- **Acceptance:** Reopen and idempotent receipt storage; tamper/replacement/binding rejection; failed sink executes only once and leaves the transaction committed; missing/read-only database and CLI checks; simulated verified commit and verified rollback.
+
+## ADR-063 — Reconstruct full files before generating localized repair diffs
+
+- **Status:** Accepted, 2026-09-30.
+- **Decision:** Optional trusted line spans expose localized source to inference while constructing the diff against the complete trusted file. Preserve outside text, support explicit missing-newline markers, enforce source/diff hashes, reject links/special files and unsupported patch metadata, and disable fuzzy patch application in both preparation and clean-room reconstruction. Independent diff-integrity mismatch is `CONTROL_FAILURE`.
+- **Finding:** Stronger workspace validation exposed a placeholder digest and ineffective alternative replay paths in the old synthetic test-gaming integration. Correct the helper's digest and add genuinely distinct sentinel-reaching paths to the owned fixture; do not modify external benchmark truth or erase historical results.
+- **Acceptance:** Exact real-patch application of localized/newline cases; stale source, tampered digest, unsafe headers, binary/mode changes, duplicates, symlinks, special files and fuzzy context rejected; failed snapshots cleaned; adversarial Docker cases retained.
+- **Limits:** Supported patches modify existing regular text files. No mathematical repair proof, production isolation, or model-quality uplift follows from transport correctness. See `RELIABILITY_AND_OPERATIONS.md`.
+
+## ADR-062 — Owner-authorized small offline external repair pilot
+
+- **Status:** Accepted, 2026-09-30, following the owner's explicit small-subset request.
+- Narrow exception to ADR-041's full-suite storage prerequisite: measure actual per-task storage and both partitions, not the full-suite recommendation as a blanket block. Full-suite SWE/AutoPatchBench runs remain outside current storage scope.
+- Predeclare three sorted Requests tasks; disclose downloaded/run/skipped tasks. Run only fixed evaluator plans through the broker under rootless gVisor, no network, memory overlays, cleared environment and user-systemd resource limits. No rootful test execution, host fallback, generic model shell, or model socket access.
+- Preserve official required test IDs, test patch, parser and grader; explicitly label narrowed required-test execution and operator localization. Reference patches validate the evaluator and never substitute for model output.
+- This is a benchmark-only isolation path, not global production hardening. Do not claim a full SWE score, representative capability, test-gaming immunity, or causal coding uplift. See `STORAGE_AND_SWE_PILOT.md` for results, failures and reproduction.
+
+## ADR-061 — Read-only installed integrity-inspection CLI
+
+- **Status:** Accepted, 2026-09-30.
+- Expose only implemented `aegis audit verify` and `aegis receipt verify` commands. Reuse existing canonical hash/chain functions; optionally compare an independently supplied audit head and bind receipt case/root to a supplied audit stream.
+- Bound inputs to 8 MiB; validation failures must not echo receipt content. CLI output explicitly reports that hash validity is not authenticated origin or independent safety proof. Do not add an arbitrary execution command, automatic authority grants, signing claim, or fake sandbox backend.
+- Negative tests cover tampering, wrong external head, missing/private invalid input, and correctly rehashed receipts pointing at a different case/root. New permissions, model tools, external routes, and secrets: none. General action-running CLI/SDK and authenticated evidence remain pending.
+
+## ADR-060 — Paired admission ablation and bounded local CDB component evaluation
+
+- **Status:** Accepted, 2026-09-30.
+- Compare ungated admission and Aegis admission on identical parsed candidates; preserve rejected, incomplete, and infrastructure outcomes. This isolates the gate, not model coding quality. Complete required checks are mandatory before the comparison labels a candidate verified. No effect is deployed by the comparison runner.
+- Local CDB triage selects IDs from predeclared command-rule candidates, in ten bounded batches, through local Ollama. The model cannot emit executable SQL, commands, or new timestamps. Detection reads only public logs; a separate pinned upstream scorer reads flags after predictions are finalized.
+- Do not equate sample/component coverage with autonomous hunting, precision, standard repair performance, or a measured positive harness uplift. Preserve worse results. Do not treat the upstream scorer's default zero cost as measured zero resource cost.
+
+## ADR-059 — Local Ollama repair, constrained output, and bounded public syntax feedback
+
+- **Status:** Accepted, 2026-09-30, following the owner's local-inference instruction.
+- Leave the offline hosted API alone. Use installed `qwen2.5:7b` locally; it fits the 8 GB GPU. This is a resource-fit choice, not evidence it is the strongest coding model. Do not load the substantially larger installed models or switch repeatedly.
+- JSON-schema constrained output is opt-in for compatible providers. Local parsing, scope checks, and clean-room verification remain mandatory even when a server claims schema compliance.
+- An optional public Python syntax check uses `ast.parse`, not execution, and permits at most one feedback retry. Feedback contains the public syntax failure, not hidden tests. Record request counts; leave aggregate token usage unavailable after a retry rather than undercounting it.
+- Object-authorization recovery accepts either 403 or 404, matching the established security contract; owner access must still succeed. The previous 404-only rollout predicate incorrectly rejected a valid 403 patch and misclassified rollback. Test both responses. No permissions, production access, or model-to-shell execution are introduced.
+
+## ADR-058 — Connect model repair to the incident case and preserve safe failure traces
+
+- **Status:** Accepted (implementation and partial verification, 2026-09-30).
+- **Decision:** Reuse the existing `CaseDependencies.generate_candidate` boundary to connect `HostedPatchProvider` to the object-authorization full-case integration. A separately gated live test uses the same configured model for containment reasoning and repair, keeps hidden tests out of inference context, and uses the existing clean-room assurance gate and brokered deployment. Synthetic operator approvals are explicitly labelled. One fixture attempt is allowed; there is no prepared-patch fallback.
+- **Failure semantics:** A generation exception or cross-case candidate halts in `REPAIR` before verification/deployment; the accepted workflow has no escalation edge from that state. An independent-verifier exception follows `INSUFFICIENT_EVIDENCE` from `CANDIDATE_VERIFY` to `ESCALATED`. Exception types, rather than their potentially sensitive details, are recorded for these repair failures. Previously these exceptions escaped the runner without a complete trace.
+- **Verification:** Three unit cases cover generation failure, cross-case output, and verifier failure; the default real-Docker object-authorization case passed after extraction. The live test was attempted once with the ignored local configuration and warm `qwen38` alias. It halted at containment proposal because ngrok returned HTTP 404/`ERR_NGROK_3200` (configured tunnel offline). No candidate was generated, no mutation was dispatched, and no live repair/recovery success is established. The synthetic run record is retained in `artifacts/benchmark_runs/live-object-auth-case-60ebd1e4104a47bf8063a548ef507bcb.json`.
+- **Limits:** This is an owned-fixture integration, not an external benchmark score or general model capability claim. The patch request still receives a trusted fixture-specific vulnerability summary. General runtime-to-source model localization, real human approvals, and calibrated model monitoring remain open.
+
+## ADR-057 — Permit the exact live rollback while a mutation is quarantined
+
+- **Status:** Accepted (implementation, 2026-09-30).
+- **Problem:** ADR-055's quarantine blocked the coordinator's rollback as a new action. The previous SQLite full-case check covered commit, leaving this failure path untested.
+- **Decision:** A coordinator may supply its current `ROLLING_BACK` parent snapshot when submitting the catalog-declared compensation. The journal exemption requires exactly one unresolved parent, a matching live broker snapshot, an unchanged action-contract digest, identical case/scope/policy/target, a control-plane request, an exact `rollback_of` original request ID, and a registered rollback action requiring independent verification. Normal policy, approval, budget, typed input, and one-use capability checks still run. The same checks apply when resuming rollback approval. A blocked rollback yields a control-failure receipt rather than an uncaught broker exception.
+- **Verification:** Unit tests cover successful and failed rollback verification across store reopen, incorrect role/target/action/parent, stale snapshots, broker restart, and missing approval. Real Docker containment and deployment failure cases run under both memory and SQLite storage and independently verify restoration.
+- **Limits:** This is a narrow compensation path in the live coordinator, not a clearance API or restart recovery. A restarted broker cannot use a supplied snapshot as live authority. Failed or unknown rollback effects remain quarantined. Authority is still in-process; actor-role strings are not authenticated identities.
+- **Rationale:** Quarantine must preserve a known compensation path while preventing unrelated actions from using it to bypass authority.
+
+## ADR-056 — Bind journaled transactions to the action contract
+
+- **Status:** Accepted (interim implementation, 2026-09-30).
+- **Decision:** Store a canonical SHA-256 digest of the complete registered `ActionDefinition` in each new transaction snapshot. A reopened broker conservatively quarantines an executed mutation when that digest is absent or differs from the currently registered action contract, even if the current catalog labels the action read-only. Snapshot revisions cannot change the digest.
+- **Verification:** Unit tests cover stable and changed definition digests, immutable journal revisions, and a restart with an action whose side-effect classification changed. The real Docker full case also passes with one SQLite store supplying artifacts, audit, and journal across reopen.
+- **Limits:** This protects classification on restart; it does not authenticate the stored catalog or database, reconstruct the historical action definition, reconcile target state, or make the default in-memory case durable. The additive digest field is optional in the v1 transaction schema for older records; absent digests fail closed for uncertain executed mutations.
+- **Rationale:** Otherwise, changing an action ID from write to read could make an old unverified effect disappear from the restart guard.
+
+## ADR-055 — Optional append-only transaction journal and restart quarantine
+
+- **Status:** Accepted (interim implementation, 2026-09-30).
+- **Decision:** The opt-in SQLite evidence backend also stores a revisioned, content-hashed `ActionTransaction` journal (schema version 2). When passed as `journal` to `ActionBroker`, proposed transactions and transitions are recorded before dispatch; terminal transitions are audited before the terminal journal revision. A new broker refuses a new case action if the journal contains a mutation that reached `EXECUTING` but lacks a recorded `COMMITTED` or `ROLLED_BACK` terminal state. Normal coordinator flow reaches those states only after independent checks, but the journal does not independently prove verification. A post-dispatch `CONTROL_FAILURE` remains unresolved despite being a terminal transaction state. Read-only incomplete actions do not quarantine the case. The guard writes a policy-decision audit event before refusal. Tool-call budget usage is reconstructed from journaled `EXECUTING` transitions so restart cannot reset that dimension.
+- **Verification:** SQLite version-1 upgrade, reopen, revision continuity/tamper tests, broker restart after an executed-but-unverified mutation, restart after an adapter exception with unknown effect, read-only restart, transaction-ID replay, and tool-call-budget continuity tests.
+- **Limits:** This is a quarantine/reconciliation signal, not automatic restart, rollback, or case recovery. Capabilities, approvals, non-tool-call budgets, receipts, and normalized evidence are not fully durable. Audit and transaction-journal writes are ordered conservatively but are not one atomic operation; multi-process brokers are not coordinated. There is no safe clearance API yet. SQLite remains local and unauthenticated without an external anchor.
+- **Rationale:** An agent must not continue a case as if a possibly effected action were harmless after a process restart. Preserving complete transaction revisions and refusing further actions makes the uncertainty visible without inventing an outcome.
+
+## ADR-054 — Adapter exceptions have unknown-effect control-failure semantics
+
+- **Status:** Accepted (implementation, 2026-09-30).
+- **Decision:** If a registered adapter raises an ordinary exception after dispatch, the broker records a terminal `CONTROL_FAILURE`, an audit event stating that the external effect is unknown, and one consumed tool-call budget unit. It returns no successful adapter result. The coordinator emits a control-failure receipt without invoking a success verifier or automatically retrying the action. The exception message is not copied to the audit trail.
+- **Verification:** Unit tests cover broker and coordinator outcomes, hash-chain validity, consumed budget, receipt integrity, and duplicate-transaction rejection after failure.
+- **Limits:** This does not prove that the external effect did or did not happen, perform rollback, or recover from process termination. A verifier/incident operator must investigate the target before any compensating action. Audit-store or process-level failure may still prevent receipt emission.
+- **Rationale:** An adapter may mutate a target before raising; treating the exception as an ordinary failed action or retrying it could compound the effect. A terminal unknown-effect control failure is the safer truthful result.
+
+## ADR-053 — Optional local SQLite evidence persistence
+
+- **Status:** Accepted (interim implementation, 2026-09-30).
+- **Decision:** Provide a single opt-in SQLite implementation of the existing artifact-store and audit-sink interfaces. Validate content digests and the complete per-case hash chain on read and before append; use database uniqueness and a transaction for each append. Give audit events globally unique IDs so a new broker process can continue an existing case. Keep the default in-memory stores for tests and existing callers.
+- **Verification:** Reopen, broker-restart, artifact-tamper, audit-tamper, invalid-digest, and invalid-predecessor unit tests; full unit, schema, lint, and type checks.
+- **Limits:** At the time of ADR-053 this persisted only raw artifacts and audit events; ADR-055 subsequently added optional transaction snapshots and restart quarantine, but not complete case recovery. Capabilities, approvals, rollback state, normalized findings, and deployment provenance are not durably restored. A local database is neither immutable nor writer-authenticated; replacing it with an internally valid history is not detected without an external anchor. Do not use this as a production audit authority.
+- **Rationale:** Establish a narrow durable evidence seam without implying that the whole runtime is crash-safe or externally tamper-proof.
+
 ## ADR-052 — Scenario-specific range response remains fixed configuration
 
 - **Status:** Accepted (implementation, 2026-09-25).

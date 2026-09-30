@@ -1,0 +1,13 @@
+{
+  "instance_id": "psf__requests-1339",
+  "variant": "model",
+  "model": "qwen2.5:7b",
+  "requests": 1,
+  "candidate_replay": false,
+  "usage": {
+    "prompt_tokens": 794,
+    "completion_tokens": 414,
+    "total_tokens": 1208
+  },
+  "candidate_digest": "8f4aabe6354dd5ba05dd191844c750e5149df6e000a6a3b3834769cda27bbbe4"
+}

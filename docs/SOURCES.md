@@ -1,6 +1,21 @@
 # Source registry
 
-Last reviewed: 2026-09-25. Prefer primary sources and re-check version-sensitive facts before publication or experiments.
+## Small offline SWE pilot (2026-09-30)
+
+- [Official harness and subsets](https://www.swebench.com/SWE-bench/reference/harness/).
+- [Harness v4.1.0](https://github.com/SWE-bench/SWE-bench/tree/v4.1.0), commit `726c5461e2ef52d83cf1ea2107870a8bb3328d57`; unchanged parser/grader with disclosed required-test command narrowing.
+- [Pinned original dataset](https://huggingface.co/datasets/princeton-nlp/SWE-bench/tree/e48e2bd1e9fecd5bbd641e9414ac59da9f2e69f6).
+- [Rootless gVisor](https://gvisor.dev/docs/user_guide/rootless/) and [multi-file installation](https://gvisor.dev/docs/user_guide/install/); explicit network-none/rootfs, never unsafe defaults.
+- [Local evidence/storage](STORAGE_AND_SWE_PILOT.md); not a full official benchmark score.
+
+## Local flagship checkpoint (2026-09-30)
+
+- [Ollama Qwen 2.5 catalog](https://ollama.com/library/qwen2.5) — provider's model metadata; local 7B tag selected for measured hardware fit, not a strongest-model claim.
+- [Official SWE-bench Docker setup](https://www.swebench.com/SWE-bench/guides/docker_setup/) — states at least 120 GB free and recommends 16 GB+ RAM; the current host has ~46 GB free. No SWE-bench result was produced.
+- [Cyber Defense Benchmark official code/sample/scorer](https://github.com/simbianai/cyber_defense_benchmark) — reviewed MIT-licensed commit `e8b86d01ccefe338d455e61505ca285943635b27`; bounded local model triage was scored on its public sample, not the full dataset. Coverage was lower than the rule baseline; precision and actual monetary/energy cost are unmeasured.
+- [Owner's public resume](https://shoaibssm.me/resume/Shoaib_Sadiq_Salehmohamed_Resume.pdf) and [public LinkedIn profile](https://in.linkedin.com/in/shoaib-ssm) — portfolio positioning context only; self-reported accomplishments are not independently verified project metrics. Personal contact information is not copied into the project.
+
+Last reviewed: 2026-09-30. Prefer primary sources and re-check version-sensitive facts before publication or experiments.
 
 ## Incident and agent control
 
@@ -39,6 +54,7 @@ Last reviewed: 2026-09-25. Prefer primary sources and re-check version-sensitive
 - [PatchEval](https://github.com/bytedance/PatchEval) — executable vulnerability-patching benchmark; leaderboard results are version-sensitive.
 - [CyberGym-E2E](https://arxiv.org/abs/2606.04460) — vulnerability discovery, PoC generation, and patching across 920 vulnerabilities and 139 projects in the paper.
 - [Cyber Defense Benchmark](https://arxiv.org/abs/2604.19533) — open-ended threat hunting over large Windows event-log datasets; its paper reports 106 procedures and measured model results, not an Aegis evaluation.
+- [Cyber Defense Benchmark official code/sample/scorer](https://github.com/simbianai/cyber_defense_benchmark) — MIT-licensed repository; Aegis ran a deterministic non-model baseline on its bundled public sample at commit `e8b86d01ccefe338d455e61505ca285943635b27`, not the full dataset or model harness. See benchmark records for the measured 5.06% sample coverage and limits.
 - [SecRespond](https://arxiv.org/abs/2607.26791) — post-compromise detection and remediation ranges.
 - [OTRF Security Datasets](https://github.com/OTRF/Security-Datasets) — reproducible security-event datasets.
 - [Splunk Attack Range](https://github.com/splunk/attack_range) — instrumented cyber-range automation.

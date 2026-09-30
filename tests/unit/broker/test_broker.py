@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from itertools import pairwise
+from pathlib import Path
 
 import pytest
 
@@ -24,6 +25,7 @@ from aegis.domain.case import Case
 from aegis.domain.policy import PolicyOutcome, RiskTier
 from aegis.domain.scope import Budgets, ScopePolicy
 from aegis.evidence.audit import InMemoryAuditSink, verify_audit_chain
+from aegis.evidence.sqlite_store import SQLiteEvidenceStore
 from aegis.evidence.store import InMemoryArtifactStore
 from aegis.monitoring.behavioral import (
     AdvisoryDisposition,
@@ -113,6 +115,47 @@ def test_permitted_request_increments_tool_call_usage(
         policy_version="scope-v1",
     )
     assert broker.usage_for(case.id).tool_calls == 1
+
+
+def test_adapter_exception_is_audited_control_failure_with_unknown_effect(
+    broker: ActionBroker,
+    case: Case,
+    scope_policy: ScopePolicy,
+    now: datetime,
+    audit_sink: InMemoryAuditSink,
+    make_request: Callable[..., ActionRequest],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def crash(_self: MockAdapter, _request: ActionRequest, *, capability_ref: str) -> AdapterResult:
+        del capability_ref
+        raise RuntimeError("synthetic post-effect worker crash")
+
+    monkeypatch.setattr(MockAdapter, "run", crash)
+    outcome = broker.submit(
+        make_request(now),
+        case=case,
+        scope=scope_policy,
+        now=now,
+        decision_id="dec-adapter-crash",
+        policy_version="scope-v1",
+    )
+    assert outcome.transaction.state.value == "control_failure"
+    assert outcome.result is None
+    assert outcome.capability is not None
+    assert broker.usage_for(case.id).tool_calls == 1
+    events = audit_sink.events_for_case(case.id)
+    assert verify_audit_chain(events)
+    assert any("external_effect=unknown" in event.summary for event in events)
+    assert all("synthetic post-effect worker crash" not in event.summary for event in events)
+    with pytest.raises(BrokerError, match="already been used"):
+        broker.submit(
+            make_request(now),
+            case=case,
+            scope=scope_policy,
+            now=now,
+            decision_id="dec-adapter-crash-retry",
+            policy_version="scope-v1",
+        )
 
 
 def test_injected_host_shell_proposal_is_denied_before_adapter_dispatch(
@@ -379,6 +422,251 @@ def test_approval_resumes_same_transaction_and_executes_only_after_broker_rechec
     events = audit_sink.events_for_case(case.id)
     assert AuditEventType.APPROVAL_RECORDED in [event.event_type for event in events]
     assert verify_audit_chain(events)
+
+
+def test_restarted_broker_blocks_new_actions_after_unfinished_mutation(
+    tmp_path: Path,
+    registry: AdapterRegistry,
+    case: Case,
+    scope_policy: ScopePolicy,
+    now: datetime,
+    make_request: Callable[..., ActionRequest],
+    scan_adapter: MockAdapter,
+) -> None:
+    path = tmp_path / "runtime.sqlite3"
+    request = make_request(now, action_type="deployment.rollout")
+    with SQLiteEvidenceStore(path) as store:
+        first_broker = ActionBroker(registry=registry, audit=store, artifacts=store, journal=store)
+        pending = first_broker.submit(
+            request,
+            case=case,
+            scope=scope_policy,
+            now=now,
+            decision_id="dec-journal-pending",
+            policy_version="scope-v1",
+        )
+        approval = Approval(
+            id="approval-journal-deploy",
+            case_id=case.id,
+            subject_ref=f"action-request://{case.id}/{request.id}",
+            requested_at=now,
+            expires_at=now + timedelta(minutes=5),
+            decision=ApprovalDecision.APPROVED,
+            decided_by="operator:alice",
+            decided_at=now,
+        )
+        executed = first_broker.submit(
+            request,
+            case=case,
+            scope=scope_policy,
+            now=now,
+            decision_id="dec-journal-approved",
+            policy_version="scope-v1",
+            approval=approval,
+            prior_transaction=pending.transaction,
+        )
+        assert executed.transaction.state.value == "executed"
+        assert scan_adapter.calls == [request]
+
+    with SQLiteEvidenceStore(path) as reopened:
+        second_broker = ActionBroker(
+            registry=registry, audit=reopened, artifacts=reopened, journal=reopened
+        )
+        unresolved = second_broker.unresolved_effects_for_case(case.id)
+        assert len(unresolved) == 1
+        assert unresolved[0].id == request.id
+        with pytest.raises(BrokerError, match="unresolved journaled mutation"):
+            second_broker.submit(
+                make_request(now, id="req-after-restart"),
+                case=case,
+                scope=scope_policy,
+                now=now,
+                decision_id="dec-after-restart",
+                policy_version="scope-v1",
+            )
+        assert scan_adapter.calls == [request]
+        assert verify_audit_chain(reopened.events_for_case(case.id))
+        last_event = reopened.last_event(case.id)
+        assert last_event is not None
+        assert last_event.event_type is AuditEventType.POLICY_DECISION_RECORDED
+        assert "unresolved journaled mutation" in last_event.summary
+
+        # A restart must not reclassify the old write as safe merely because
+        # the current catalog claims the same action ID is now read-only.
+        drifted_registry = AdapterRegistry()
+        drifted_registry.register(
+            MockAdapter(
+                scan_adapter.descriptor,
+                allowed_parameter_keys=scan_adapter.allowed_parameter_keys,
+                action_definitions=tuple(
+                    definition.model_copy(update={"side_effects": (ActionSideEffect.READ,)})
+                    if definition.action_type == "deployment.rollout"
+                    else definition
+                    for definition in scan_adapter.action_definitions
+                ),
+            )
+        )
+        drifted_broker = ActionBroker(
+            registry=drifted_registry, audit=reopened, artifacts=reopened, journal=reopened
+        )
+        assert len(drifted_broker.unresolved_effects_for_case(case.id)) == 1
+
+
+def test_restarted_broker_allows_new_read_only_action_but_not_reused_id(
+    tmp_path: Path,
+    registry: AdapterRegistry,
+    case: Case,
+    scope_policy: ScopePolicy,
+    now: datetime,
+    make_request: Callable[..., ActionRequest],
+) -> None:
+    path = tmp_path / "runtime.sqlite3"
+    request = make_request(now)
+    with SQLiteEvidenceStore(path) as store:
+        ActionBroker(registry=registry, audit=store, artifacts=store, journal=store).submit(
+            request,
+            case=case,
+            scope=scope_policy,
+            now=now,
+            decision_id="dec-read-first",
+            policy_version="scope-v1",
+        )
+    with SQLiteEvidenceStore(path) as reopened:
+        broker = ActionBroker(
+            registry=registry, audit=reopened, artifacts=reopened, journal=reopened
+        )
+        assert broker.unresolved_effects_for_case(case.id) == ()
+        assert broker.usage_for(case.id).tool_calls == 1
+        with pytest.raises(BrokerError, match="already been journaled"):
+            broker.submit(
+                request,
+                case=case,
+                scope=scope_policy,
+                now=now,
+                decision_id="dec-read-replay",
+                policy_version="scope-v1",
+            )
+        new_request = make_request(now, id="req-read-second")
+        outcome = broker.submit(
+            new_request,
+            case=case,
+            scope=scope_policy,
+            now=now,
+            decision_id="dec-read-second",
+            policy_version="scope-v1",
+        )
+        assert outcome.result is not None and outcome.result.exit_status == "success"
+        assert broker.usage_for(case.id).tool_calls == 2
+
+
+def test_restart_preserves_tool_call_budget_from_journal(
+    tmp_path: Path,
+    registry: AdapterRegistry,
+    case: Case,
+    scope_policy: ScopePolicy,
+    now: datetime,
+    make_request: Callable[..., ActionRequest],
+) -> None:
+    path = tmp_path / "budget.sqlite3"
+    tight_scope = scope_policy.model_copy(
+        update={
+            "budgets": Budgets(
+                tool_calls=1, model_tokens=100_000, wall_time_seconds=3600, spend_usd=20
+            )
+        }
+    )
+    with SQLiteEvidenceStore(path) as store:
+        first = ActionBroker(registry=registry, audit=store, artifacts=store, journal=store)
+        outcome = first.submit(
+            make_request(now),
+            case=case,
+            scope=tight_scope,
+            now=now,
+            decision_id="dec-budget-first",
+            policy_version="scope-v1",
+        )
+        assert outcome.result is not None
+    with SQLiteEvidenceStore(path) as reopened:
+        restarted = ActionBroker(
+            registry=registry, audit=reopened, artifacts=reopened, journal=reopened
+        )
+        outcome = restarted.submit(
+            make_request(now, id="req-budget-second"),
+            case=case,
+            scope=tight_scope,
+            now=now,
+            decision_id="dec-budget-second",
+            policy_version="scope-v1",
+        )
+        assert outcome.decision.outcome is PolicyOutcome.DENIED
+        assert outcome.result is None
+        assert restarted.usage_for(case.id).tool_calls == 1
+
+
+def test_restarted_broker_quarantines_unknown_effect_after_adapter_exception(
+    tmp_path: Path,
+    registry: AdapterRegistry,
+    case: Case,
+    scope_policy: ScopePolicy,
+    now: datetime,
+    make_request: Callable[..., ActionRequest],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def crash(_self: MockAdapter, _request: ActionRequest, *, capability_ref: str) -> AdapterResult:
+        del capability_ref
+        raise RuntimeError("effect may have happened")
+
+    monkeypatch.setattr(MockAdapter, "run", crash)
+    path = tmp_path / "runtime.sqlite3"
+    request = make_request(now, action_type="deployment.rollout")
+    with SQLiteEvidenceStore(path) as store:
+        broker = ActionBroker(registry=registry, audit=store, artifacts=store, journal=store)
+        pending = broker.submit(
+            request,
+            case=case,
+            scope=scope_policy,
+            now=now,
+            decision_id="dec-unknown-pending",
+            policy_version="scope-v1",
+        )
+        approval = Approval(
+            id="approval-unknown-effect",
+            case_id=case.id,
+            subject_ref=f"action-request://{case.id}/{request.id}",
+            requested_at=now,
+            expires_at=now + timedelta(minutes=5),
+            decision=ApprovalDecision.APPROVED,
+            decided_by="operator:alice",
+            decided_at=now,
+        )
+        failed = broker.submit(
+            request,
+            case=case,
+            scope=scope_policy,
+            now=now,
+            decision_id="dec-unknown-approved",
+            policy_version="scope-v1",
+            approval=approval,
+            prior_transaction=pending.transaction,
+        )
+        assert failed.transaction.state.value == "control_failure"
+
+    with SQLiteEvidenceStore(path) as reopened:
+        restarted = ActionBroker(
+            registry=registry, audit=reopened, artifacts=reopened, journal=reopened
+        )
+        unresolved = restarted.unresolved_effects_for_case(case.id)
+        assert len(unresolved) == 1
+        assert unresolved[0].state.value == "control_failure"
+        with pytest.raises(BrokerError, match="unresolved journaled mutation"):
+            restarted.submit(
+                make_request(now, id="req-followup-after-failure"),
+                case=case,
+                scope=scope_policy,
+                now=now,
+                decision_id="dec-followup-after-failure",
+                policy_version="scope-v1",
+            )
 
 
 def test_scope_permitted_but_unregistered_adapter_raises_broker_error(

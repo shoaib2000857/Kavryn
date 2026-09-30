@@ -88,6 +88,8 @@ class InMemoryAuditSink:
         self._events: dict[str, list[AuditEvent]] = {}
 
     def append(self, event: AuditEvent) -> None:
+        if audit_event_digest(event) != event.integrity:
+            raise AuditChainError("audit event content does not match its integrity digest")
         history = self._events.setdefault(event.case_id, [])
         expected_prev = history[-1].integrity if history else None
         if event.prev_event_digest != expected_prev:

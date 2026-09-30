@@ -1,6 +1,6 @@
 # Instructions for coding agents
 
-These instructions apply to any AI coding agent implementing Aegis Defender.
+These instructions apply to any AI coding agent implementing Kavryn (formerly Aegis Defender).
 
 ## Source of truth
 

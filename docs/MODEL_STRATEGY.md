@@ -1,5 +1,32 @@
 # Model and inference strategy
 
+## Current local inference (2026-09-30)
+
+The owner reports the hosted server is down and requested Ollama. Current experiments
+use installed local `qwen2.5:7b`, fully GPU-resident on the 8 GB RTX 4060 Laptop GPU.
+The larger installed GLM/Gemma/GPT models were not loaded. This is a resource-fit
+choice, not a comparative model-quality result. The real model now completed the
+owned object-authorization incident/repair/recovery integration. Opt-in structured
+output and one bounded public syntax retry are available; independent scope and
+clean-room checks remain mandatory. See ADR-059 and [Local evaluation](LOCAL_EVALUATION.md).
+
+Local tag digest, observed after these runs:
+`845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e`;
+Q4_K_M, 7.6B parameters, Ollama 0.34.2. CDB triage explicitly used 8,192 context,
+512 prediction tokens, temperature 0; compatible repair requests use 8,192 maximum
+output tokens and temperature 0. Do not infer identical effective context settings
+across those APIs. The hosted credential file remains unchanged.
+
+## Historical hosted-provider observation (2026-09-30)
+
+The newly gated full object-authorization case uses `qwen38` for both containment
+reasoning and patch generation, with reasoning disabled and no model switching.
+Its single live attempt stopped at the first provider call: the configured ngrok
+tunnel returned HTTP 404 with `ERR_NGROK_3200` (endpoint offline). This is not an
+authentication failure and does not establish the A100 model's process state.
+No candidate or mutation occurred. Keep the prior successful synthetic repair
+pilots as historical results; hosted full live incident-to-recovery remains unverified.
+
 ## Decision summary
 
 Aegis must be model-provider neutral. The initial model can be GLM-5.2, GLM-5.3, another hosted frontier model, or a smaller self-hosted open-weight model without changing workflow, authority, evidence, or assurance semantics.

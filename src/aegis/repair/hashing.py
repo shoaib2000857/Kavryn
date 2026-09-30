@@ -26,8 +26,13 @@ def hash_source_tree(root: str | Path) -> Digest:
     any file addition, removal, rename, or content change.
     """
     root = Path(root)
+    if root.is_symlink() or not root.is_dir():
+        raise ValueError("source root must be a non-symlink directory")
     hasher = hashlib.sha256()
-    for path in sorted(p for p in root.rglob("*") if p.is_file()):
+    paths = sorted(root.rglob("*"))
+    if any(p.is_symlink() or not (p.is_file() or p.is_dir()) for p in paths):
+        raise ValueError("source tree contains symlinks or special files")
+    for path in (p for p in paths if p.is_file()):
         relative = path.relative_to(root).as_posix()
         hasher.update(relative.encode())
         hasher.update(b"\0")

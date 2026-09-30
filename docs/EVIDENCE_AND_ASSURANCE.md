@@ -1,5 +1,11 @@
 # Evidence model and assurance gate
 
+Latest implementation: [reliable repair transport and durable receipts](RELIABILITY_AND_OPERATIONS.md).
+Independent diff-digest disagreement is a hard `CONTROL_FAILURE`. Optional
+schema-3 SQLite receipt storage checks terminal journal content and audit-chain
+linkage; a failed terminal receipt write must not trigger action replay. Neither
+hashes nor successful tests authenticate authority or prove complete security.
+
 ## Terminology
 
 The project uses **evidence-carrying patch** and **assurance gate** as its default language.
@@ -81,8 +87,32 @@ The record links case-scoped artifact references for the normalized scanner resu
 raw telemetry, and deployment provenance. The summary states that causal relevance
 is unconfirmed. A matching route and finding is a triage lead, not proof that the
 finding caused the observed event. This is required by the fixed path-traversal
-Docker case before containment; persistence and generalized artifact retrieval
-remain unimplemented.
+Docker case before containment; generalized retrieval of normalized findings and
+deployment provenance remains unimplemented.
+
+### Optional local evidence persistence
+
+`SQLiteEvidenceStore` implements the artifact-store, audit-sink, and optional
+transaction-journal interfaces. Inject it as `audit`, `artifacts`, and `journal`
+into `ActionBroker` to persist raw content-addressed artifacts, per-case audit
+events, and append-only transaction revisions across process restarts. Reads
+validate content digests, the audit hash chain, and revision continuity. A
+restarted broker refuses new actions if a journaled mutation reached execution
+but lacks a recorded commit or rollback, including after a post-dispatch
+`CONTROL_FAILURE`. This is a quarantine signal, **not** automatic recovery.
+Within the live coordinator, the exact catalog-declared rollback can proceed
+when bound to the current `ROLLING_BACK` parent, same target and policy, and
+original request ID. Approval, policy, budget, capability, and independent
+rollback verification remain required. A restarted broker cannot use this
+exception; see ADR-057. Failed rollback verification preserves quarantine.
+The broker reconstructs tool-call budget usage from journaled `EXECUTING`
+transitions, so a restart cannot reset that one dimension. Capabilities,
+approvals, other budgets, receipts, rollback execution, normalized
+findings, and deployment provenance are not fully durably restored. Audit and
+journal writes are not one atomic operation; multi-process broker coordination
+and a safe operator clearance API are not implemented. The database has no
+independent writer authentication or external anchor, so an attacker able to
+replace it can substitute an internally consistent history.
 
 ## Patch candidate schema
 

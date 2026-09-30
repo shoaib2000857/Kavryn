@@ -8,6 +8,13 @@
 - A completed tool call does not imply a successful defensive outcome.
 - Terminal refusal and escalation states preserve partial evidence.
 
+The implemented repair runner also halts with a trace if candidate generation
+raises or produces a cross-case candidate, before invoking the verifier or
+deployment. It stays in `REPAIR`, which currently has no escalation edge in the
+accepted diagram. A verifier exception escalates from `CANDIDATE_VERIFY` through
+the existing insufficient-evidence edge. Existing verified containment remains
+in place; no fallback patch is deployed. See ADR-058.
+
 ## Closed-loop incident-to-patch workflow
 
 ```mermaid

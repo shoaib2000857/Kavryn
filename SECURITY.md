@@ -1,6 +1,6 @@
 # Security and authorized-use policy
 
-Aegis Defender is a defensive research project. Development and evaluation must be limited to:
+Kavryn (formerly Aegis Defender) is a defensive research project. Development and evaluation must be limited to:
 
 - repositories owned by the operator or explicitly authorized for testing;
 - isolated local or cloud cyber ranges;

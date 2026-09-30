@@ -185,6 +185,17 @@
   "additionalProperties": false,
   "description": "Immutable snapshot of one proposed consequential action.",
   "properties": {
+    "action_definition_digest": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Digest"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "action_request": {
       "$ref": "#/$defs/ActionRequest"
     },

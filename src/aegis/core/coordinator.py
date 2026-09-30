@@ -17,10 +17,11 @@ from uuid import uuid4
 from pydantic import Field, model_validator
 
 from aegis.broker.adapter import AdapterResult
-from aegis.broker.broker import ActionBroker, BrokerOutcome
+from aegis.broker.broker import ActionBroker, BrokerError, BrokerOutcome
 from aegis.core.receipt import (
     ExecutionDisposition,
     ExecutionReceipt,
+    ReceiptStore,
     receipt_from_transaction,
 )
 from aegis.core.transaction import ActionTransaction, TransactionState
@@ -32,12 +33,22 @@ from aegis.policy.approval import Approval
 
 __all__ = [
     "ActionTransactionCoordinator",
+    "ReceiptPersistenceError",
     "VerificationCheck",
     "VerificationFunction",
     "VerificationOutcome",
     "Verifier",
     "VerifierLike",
 ]
+
+
+class ReceiptPersistenceError(RuntimeError):
+    """Terminal action completed, but its durable receipt could not be stored.
+
+    Do not retry execution in response. Inspect the terminal journal and audit;
+    failing to save a receipt does not undo an already committed target effect.
+    """
+
 
 VERIFICATION_OUTCOME_SCHEMA_VERSION: Final[Literal["aegis.verification_outcome/v1"]] = (
     "aegis.verification_outcome/v1"
@@ -95,8 +106,9 @@ VerifierLike = Verifier | VerificationFunction
 class ActionTransactionCoordinator:
     """Run one typed action with approval, independent verification, and receipts."""
 
-    def __init__(self, broker: ActionBroker) -> None:
+    def __init__(self, broker: ActionBroker, *, receipts: ReceiptStore | None = None) -> None:
         self._broker = broker
+        self._receipts = receipts
 
     def execute(
         self,
@@ -193,14 +205,27 @@ class ActionTransactionCoordinator:
             return tx, receipt, outcome
 
         tx = self._advance(tx, TransactionState.ROLLING_BACK, now, "starting brokered rollback")
-        rollback_tx = self._broker_rollback(
-            rollback_request,
-            case=case,
-            scope=scope,
-            now=now,
-            policy_version=policy_version,
-            approval=rollback_approval,
-        )
+        try:
+            rollback_tx = self._broker_rollback(
+                rollback_request,
+                case=case,
+                scope=scope,
+                now=now,
+                policy_version=policy_version,
+                approval=rollback_approval,
+                rollback_for=tx,
+            )
+        except BrokerError:
+            tx = self._advance(
+                tx, TransactionState.CONTROL_FAILURE, now, "rollback blocked by control plane"
+            )
+            return (
+                tx,
+                self._receipt(
+                    tx, ExecutionDisposition.CONTROL_FAILURE, now, model_provider, model_id
+                ),
+                outcome,
+            )
         if rollback_tx.result is None or rollback_tx.result.exit_status != "success":
             tx = self._advance(
                 tx,
@@ -277,6 +302,7 @@ class ActionTransactionCoordinator:
         transaction_id: str,
         approval: Approval | None,
         prior_transaction: ActionTransaction | None = None,
+        rollback_for: ActionTransaction | None = None,
     ) -> BrokerOutcome:
         return self._broker.submit(
             request,
@@ -288,6 +314,7 @@ class ActionTransactionCoordinator:
             transaction_id=transaction_id,
             approval=approval,
             prior_transaction=prior_transaction,
+            rollback_for=rollback_for,
         )
 
     def _broker_rollback(
@@ -299,6 +326,7 @@ class ActionTransactionCoordinator:
         now: datetime,
         policy_version: str,
         approval: Approval | None,
+        rollback_for: ActionTransaction,
     ) -> BrokerOutcome:
         first = self._submit(
             request,
@@ -308,6 +336,7 @@ class ActionTransactionCoordinator:
             policy_version=policy_version,
             transaction_id=f"{request.id}-rollback",
             approval=None,
+            rollback_for=rollback_for,
         )
         if first.transaction.state is not TransactionState.AWAITING_APPROVAL or approval is None:
             return first
@@ -320,6 +349,7 @@ class ActionTransactionCoordinator:
             transaction_id=first.transaction.id,
             approval=approval,
             prior_transaction=first.transaction,
+            rollback_for=rollback_for,
         )
 
     def _advance(
@@ -403,7 +433,7 @@ class ActionTransactionCoordinator:
         audit_root = self._broker.audit_root(tx.case_id)
         if audit_root is None:
             raise RuntimeError("cannot issue execution receipt without an audit chain")
-        return receipt_from_transaction(
+        receipt = receipt_from_transaction(
             tx,
             disposition=disposition,
             issued_at=now,
@@ -411,6 +441,16 @@ class ActionTransactionCoordinator:
             model_provider=model_provider,
             model_id=model_id,
         )
+        if self._receipts is not None:
+            try:
+                self._receipts.put_receipt(receipt)
+            except Exception as exc:
+                raise ReceiptPersistenceError(
+                    f"receipt persistence failed after terminal transaction {tx.id} "
+                    f"({tx.state.value}); "
+                    "inspect journal and audit; do not retry execution"
+                ) from exc
+        return receipt
 
     @staticmethod
     def _terminal_disposition(state: TransactionState) -> ExecutionDisposition | None:

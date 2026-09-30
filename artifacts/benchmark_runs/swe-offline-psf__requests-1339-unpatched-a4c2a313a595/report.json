@@ -1,0 +1,138 @@
+{
+  "benchmark": "SWE-bench original: localized offline required-test pilot",
+  "official_full_harness_run": false,
+  "selection": [
+    "psf__requests-1142",
+    "psf__requests-1327",
+    "psf__requests-1339"
+  ],
+  "instance_id": "psf__requests-1339",
+  "variant": "unpatched",
+  "dataset_revision": "e48e2bd1e9fecd5bbd641e9414ac59da9f2e69f6",
+  "harness_revision": "726c5461e2ef52d83cf1ea2107870a8bb3328d57",
+  "image_digest": "sha256:e47079ea07cc6b2c1781ff0c9192845a6e2eee0b04271364ddef5930653dabed",
+  "source_digest": {
+    "algorithm": "sha256",
+    "digest": "5fed984c0366adc91bcf87865c46b55626c267470b1b0cd203338f011151ced4"
+  },
+  "localization_assistance": {
+    "file": "requests/structures.py",
+    "class": "CaseInsensitiveDict"
+  },
+  "model_requests": 0,
+  "candidate_replay": false,
+  "candidate_origin": "unpatched",
+  "usage": null,
+  "gold_and_hidden_tests_sent_to_model": false,
+  "network": "none",
+  "isolation": "rootless gVisor release-20260921.0; memory overlay; user systemd cgroups",
+  "required_tests": [
+    "test_requests.py::TestCaseInsensitiveDict::test_equality",
+    "test_requests.py::TestCaseInsensitiveDict::test_fixes_649",
+    "test_requests.py::TestCaseInsensitiveDict::test_len",
+    "test_requests.py::TestCaseInsensitiveDict::test_lower_items",
+    "test_requests.py::TestCaseInsensitiveDict::test_preserve_last_key_case",
+    "test_requests.py::TestCaseInsensitiveDict::test_setdefault",
+    "test_requests.py::TestCaseInsensitiveDict::test_update",
+    "test_requests.py::RequestsTestCase::test_basic_building",
+    "test_requests.py::RequestsTestCase::test_cannot_send_unprepared_requests",
+    "test_requests.py::RequestsTestCase::test_cookie_parameters",
+    "test_requests.py::RequestsTestCase::test_entry_points",
+    "test_requests.py::RequestsTestCase::test_get_auth_from_url",
+    "test_requests.py::RequestsTestCase::test_hook_receives_request_arguments",
+    "test_requests.py::RequestsTestCase::test_http_error",
+    "test_requests.py::RequestsTestCase::test_invalid_url",
+    "test_requests.py::RequestsTestCase::test_links",
+    "test_requests.py::RequestsTestCase::test_no_content_length",
+    "test_requests.py::RequestsTestCase::test_params_are_added_before_fragment",
+    "test_requests.py::RequestsTestCase::test_path_is_not_double_encoded",
+    "test_requests.py::RequestsTestCase::test_response_is_iterable",
+    "test_requests.py::TestCaseInsensitiveDict::test_contains",
+    "test_requests.py::TestCaseInsensitiveDict::test_delitem",
+    "test_requests.py::TestCaseInsensitiveDict::test_docstring_example",
+    "test_requests.py::TestCaseInsensitiveDict::test_get",
+    "test_requests.py::TestCaseInsensitiveDict::test_getitem",
+    "test_requests.py::TestCaseInsensitiveDict::test_iter",
+    "test_requests.py::TestCaseInsensitiveDict::test_iterable_init",
+    "test_requests.py::TestCaseInsensitiveDict::test_kwargs_init",
+    "test_requests.py::TestCaseInsensitiveDict::test_mapping_init",
+    "test_requests.py::TestCaseInsensitiveDict::test_preserve_key_case",
+    "test_requests.py::TestCaseInsensitiveDict::test_update_retains_unchanged"
+  ],
+  "script_digest": "dc3b8a2ce01470ae08319bb67bee9079b6591b500e3e164e6349cac5386038b2",
+  "log_digest": "91e658f2de93b581030d9214306920c1fae9fec21165afb5f61ba6fc7489b689",
+  "policy_outcome": "permitted",
+  "policy_reasons": [
+    "action_type, adapter, target, and budget all resolved within scope"
+  ],
+  "execution_status": "success",
+  "trusted_base_unchanged": true,
+  "duration_seconds": 11.009933907000232,
+  "official_grader_report": {
+    "psf__requests-1339": {
+      "patch_is_None": false,
+      "patch_exists": true,
+      "patch_successfully_applied": true,
+      "resolved": false,
+      "tests_status": {
+        "FAIL_TO_PASS": {
+          "success": [],
+          "failure": [
+            "test_requests.py::TestCaseInsensitiveDict::test_equality",
+            "test_requests.py::TestCaseInsensitiveDict::test_fixes_649",
+            "test_requests.py::TestCaseInsensitiveDict::test_len",
+            "test_requests.py::TestCaseInsensitiveDict::test_lower_items",
+            "test_requests.py::TestCaseInsensitiveDict::test_preserve_last_key_case",
+            "test_requests.py::TestCaseInsensitiveDict::test_setdefault",
+            "test_requests.py::TestCaseInsensitiveDict::test_update"
+          ]
+        },
+        "PASS_TO_PASS": {
+          "success": [
+            "test_requests.py::RequestsTestCase::test_basic_building",
+            "test_requests.py::RequestsTestCase::test_cannot_send_unprepared_requests",
+            "test_requests.py::RequestsTestCase::test_cookie_parameters",
+            "test_requests.py::RequestsTestCase::test_entry_points",
+            "test_requests.py::RequestsTestCase::test_get_auth_from_url",
+            "test_requests.py::RequestsTestCase::test_hook_receives_request_arguments",
+            "test_requests.py::RequestsTestCase::test_http_error",
+            "test_requests.py::RequestsTestCase::test_invalid_url",
+            "test_requests.py::RequestsTestCase::test_links",
+            "test_requests.py::RequestsTestCase::test_no_content_length",
+            "test_requests.py::RequestsTestCase::test_params_are_added_before_fragment",
+            "test_requests.py::RequestsTestCase::test_path_is_not_double_encoded",
+            "test_requests.py::RequestsTestCase::test_response_is_iterable",
+            "test_requests.py::TestCaseInsensitiveDict::test_contains",
+            "test_requests.py::TestCaseInsensitiveDict::test_delitem",
+            "test_requests.py::TestCaseInsensitiveDict::test_docstring_example",
+            "test_requests.py::TestCaseInsensitiveDict::test_get",
+            "test_requests.py::TestCaseInsensitiveDict::test_getitem",
+            "test_requests.py::TestCaseInsensitiveDict::test_iter",
+            "test_requests.py::TestCaseInsensitiveDict::test_iterable_init",
+            "test_requests.py::TestCaseInsensitiveDict::test_kwargs_init",
+            "test_requests.py::TestCaseInsensitiveDict::test_mapping_init",
+            "test_requests.py::TestCaseInsensitiveDict::test_preserve_key_case",
+            "test_requests.py::TestCaseInsensitiveDict::test_update_retains_unchanged"
+          ],
+          "failure": []
+        },
+        "FAIL_TO_FAIL": {
+          "success": [],
+          "failure": []
+        },
+        "PASS_TO_FAIL": {
+          "success": [],
+          "failure": []
+        }
+      }
+    }
+  },
+  "audit_valid": true,
+  "audit_head": "986e5428baf305f3e52503efa43d313c1aa6c110178e379fbd2af8dcdec9a39f",
+  "caveats": [
+    "Only official FAIL_TO_PASS/PASS_TO_PASS IDs executed, not full repository suite.",
+    "Model received a localized source class and public issue, not autonomous search.",
+    "Unpatched/oracle runs validate infrastructure; neither is a basic-agent baseline.",
+    "No full SWE-bench score or harness capability uplift can be inferred."
+  ]
+}

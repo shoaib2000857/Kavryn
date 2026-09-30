@@ -1,0 +1,9 @@
+{
+  "instance_id": "psf__requests-1142",
+  "variant": "model",
+  "model": "qwen2.5:7b",
+  "requests": 0,
+  "candidate_replay": true,
+  "usage": null,
+  "candidate_digest": "b690dfb0e8047cfec6e780045ff29962cd8e3b2ddcb8022dd13e3c19fe1f2f82"
+}

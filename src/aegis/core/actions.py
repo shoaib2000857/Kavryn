@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from enum import StrEnum
 from typing import Annotated, Final, Literal
 
 from pydantic import Field, StringConstraints, field_validator, model_validator
 
-from aegis.domain.base import ActionId, ActorId, AegisModel, ToolId
+from aegis.domain.base import ActionId, ActorId, AegisModel, Digest, ToolId
 from aegis.domain.policy import RiskTier
 
 __all__ = [
@@ -19,6 +21,7 @@ __all__ = [
     "ActionSideEffect",
     "ActionValueType",
     "VerificationContract",
+    "action_definition_digest",
 ]
 
 ACTION_DEFINITION_SCHEMA_VERSION: Final[Literal["aegis.action_definition/v1"]] = (
@@ -120,6 +123,17 @@ class ActionDefinition(AegisModel):
         if ActionSideEffect.NETWORK in self.side_effects and self.network == "none":
             raise ValueError("network side effect cannot be declared when network access is none")
         return self
+
+
+def action_definition_digest(definition: ActionDefinition) -> Digest:
+    """Hash a complete action contract using stable, sorted JSON."""
+    canonical = json.dumps(
+        definition.model_dump(mode="json"),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return Digest(digest=hashlib.sha256(canonical).hexdigest())
 
 
 class ActionCatalog:

@@ -1,11 +1,85 @@
 # Benchmarks and datasets
 
-Snapshot date: 2026-09-25. Re-check upstream versions before experiments.
+Snapshot date: 2026-09-30. Re-check upstream versions before experiments.
+
+## Offline external repair pilot
+
+Two original SWE-bench Requests tasks ran through brokered rootless gVisor with
+the unchanged official test patch/parser/grader, but only complete required
+F2P/P2P test lists. Qwen candidate 1142 passed six tests; 1339 failed patch
+application. Both reference patches passed. Third selected task 1327 not run.
+This is localized repair, not autonomous search, full-harness execution, a
+full-suite score, or coding uplift. See [results](STORAGE_AND_SWE_PILOT.md).
+Earlier "no external repair" entries below are historical checkpoints.
+
+## Latest local-model checkpoint
+
+Ollama `qwen2.5:7b` now completed the full owned object-authorization model-driven
+incident/repair/recovery integration, without oracle-patch fallback. Separate
+fixture repairs and an identical-candidate admission ablation also ran. These are
+Layer-0 results, not standard repair scores. The official CDB public-sample scorer
+reported **3.2621% coverage (28/3,912 flags, 126 submissions)** for bounded local
+model triage of the existing rule shortlist, below the rule baseline's 5.0577%.
+No positive quality uplift is established. Exact records, reproducible commands,
+failure analysis, and limits are in [Local evaluation](LOCAL_EVALUATION.md).
+
+The following hosted-attempt and earlier dataset entries are historical checkpoints,
+not a claim that the newer local run is still blocked by the hosted tunnel.
+
+## Full synthetic model-case attempt (2026-09-30)
+
+A gated object-authorization integration now connects the hosted containment
+reasoner and hosted patch provider to the existing scan/telemetry investigation,
+clean-room verifier, and brokered deployment. The model gets synthetic context and
+one source file; hidden tests and the prepared patch are absent from its request.
+The single `qwen38` attempt stopped before mutation because the configured ngrok
+tunnel returned HTTP 404/`ERR_NGROK_3200`. No patch was generated or scored.
+The [preserved run record](../artifacts/benchmark_runs/live-object-auth-case-60ebd1e4104a47bf8063a548ef507bcb.json)
+contains the trace, zero candidates, image/source digests, and audit evidence.
+This is infrastructure evidence from an owned fixture, not a standard benchmark
+or proof of full model recovery. Re-run instructions are in
+[the integration guide](../tests/integration/README.md#live-model-incident-and-repair-case).
+
+## First external dataset measurement (2026-09-30)
+
+The [Cyber Defense Benchmark public sample](https://github.com/simbianai/cyber_defense_benchmark)
+was evaluated at upstream commit `e8b86d01ccefe338d455e61505ca285943635b27`.
+A local deterministic command-pattern baseline read only `sample.json` (155,350 events),
+submitted at most 250 unique timestamps, and did **not** read `sample_flags.json`
+until a separate scoring step. The unmodified upstream `benchmark.scorer.score_hunt_file`
+reported **0.0505767050 coverage per run (5.06%)**, with **80/3,912 flags detected
+(2.04%)** and 250 submissions. The exact [predictions](../artifacts/benchmark_runs/cdb-public-sample-command-rules-v1.json)
+and [scoring record](../artifacts/benchmark_runs/cdb-public-sample-command-rules-v1-official-score.json)
+include hashes, upstream commit, per-tactic scores, and limitations.
+
+This is **one public sample, seed 176, not the full multi-seed dataset**. It is a
+deterministic component baseline, **not** a `qwen38`, LLM-agent, or complete Aegis
+defender score. The upstream coverage metric does not penalize false positives;
+250 submissions should not be mistaken for precision. No external repair benchmark
+or full Cyber Defense Benchmark run has been completed.
+
+To reproduce from the reviewed upstream checkout (the baseline never reads flags):
+
+```bash
+uv run python scripts/run_cdb_sample_baseline.py \
+  --sample-zip /path/to/cyber_defense_benchmark/datasets/sample.zip \
+  --out artifacts/benchmark_runs/cdb-public-sample-command-rules-v1.json
+uv run python scripts/score_cdb_sample.py \
+  --upstream /path/to/cyber_defense_benchmark \
+  --commit e8b86d01ccefe338d455e61505ca285943635b27 \
+  --sample-zip /path/to/cyber_defense_benchmark/datasets/sample.zip \
+  --predictions artifacts/benchmark_runs/cdb-public-sample-command-rules-v1.json \
+  --out artifacts/benchmark_runs/cdb-public-sample-command-rules-v1-official-score.json
+```
+
+The scripts refuse to overwrite existing outputs; choose fresh output paths when
+repeating the run. They do not install or invoke the upstream model harness.
 
 ## Actual evaluation status (2026-09-25)
 
-The repository has **not** run SWE-bench, Vul4J, AutoPatchBench, Cyber Defense Benchmark,
-or another external benchmark. The prior live qwen38 run exercised only a containment
+At the 2026-09-25 checkpoint, the repository had **not** run SWE-bench, Vul4J,
+AutoPatchBench, Cyber Defense Benchmark, or another external benchmark. That status
+is superseded by the limited CDB sample baseline above. The prior live qwen38 run exercised only a containment
 proposal in one local Docker range; its repair patch was pre-authored by the fixture test.
 Do not report that run as patching or detection performance.
 
@@ -126,8 +200,9 @@ Aegis-adapter scope must be audited before selecting a reproducible subset.
 
 Exact latest unit/static/schema/Docker results are maintained in
 [`docs/ACTIVE_TASKS.md`](ACTIVE_TASKS.md). These are project control/integration tests,
-not benchmark-dataset scores. No external dataset was downloaded and no standard benchmark
-agent run was executed. The corrected-key local qwen38 repair pilot produced one verified
+not benchmark-dataset scores. The CDB public sample baseline above is the first
+external dataset evaluation; no standard benchmark **agent** run or external repair
+benchmark has been executed. The corrected-key local qwen38 repair pilot produced one verified
 object-authorization patch and one unchanged path-traversal response; see records above.
 
 The range investigator is now application code and both its static scan and telemetry

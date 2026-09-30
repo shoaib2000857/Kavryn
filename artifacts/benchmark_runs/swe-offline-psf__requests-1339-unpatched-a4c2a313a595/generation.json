@@ -1,0 +1,9 @@
+{
+  "instance_id": "psf__requests-1339",
+  "variant": "unpatched",
+  "model": null,
+  "requests": 0,
+  "candidate_replay": false,
+  "usage": null,
+  "candidate_digest": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

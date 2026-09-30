@@ -1,8 +1,20 @@
 # Aegis documentation index
 
+Public project name: **Kavryn**. Start with the [SDK quick start](SDK_QUICKSTART.md)
+for installation, public imports, run scripts, and checked downloads. Historical
+Aegis names and evidence IDs are retained for compatibility.
+
+Start here for model-free local use and the latest repair/receipt safeguards:
+[Reliability and operations](RELIABILITY_AND_OPERATIONS.md).
+
+New: [Storage audit and offline SWE-bench pilot](STORAGE_AND_SWE_PILOT.md) — cleanup candidates, two-disk storage lesson, scoped external repair results and exact evaluation limits.
+
 This directory is the project source of truth during research and implementation. The runtime is an early prototype; consult progress and active tasks for evidence-backed status.
 
 ## Reading order
+
+For the latest runnable local-model work and measured comparisons, see
+[Local evaluation](LOCAL_EVALUATION.md).
 
 1. [Project charter](PROJECT_CHARTER.md)
 2. [Product requirements](PRODUCT_REQUIREMENTS.md)

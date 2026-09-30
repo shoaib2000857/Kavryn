@@ -1,9 +1,17 @@
 __pycache__/
 *.pyc
 .venv/
+.kavryn-venv/
 .mypy_cache/
 .ruff_cache/
 .pytest_cache/
 *.egg-info/
 .env
 .env.local
+.env.*
+!.env.example
+dist/
+build/
+*.sqlite3
+*.sqlite3-*
+.bench/

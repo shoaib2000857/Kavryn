@@ -62,6 +62,7 @@ def scan_adapter(scan_descriptor: AdapterDescriptor) -> MockAdapter:
             "action_type": "deployment.rollout",
             "description": "Synthetic approval-gate test action.",
             "risk_tier": RiskTier.R4_CHANGE,
+            "side_effects": (ActionSideEffect.WRITE,),
         }
     )
     return MockAdapter(

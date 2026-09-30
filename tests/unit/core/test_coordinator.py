@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -19,12 +20,13 @@ from aegis.core.actions import (
 )
 from aegis.core.coordinator import (
     ActionTransactionCoordinator,
+    ReceiptPersistenceError,
     VerificationCheck,
     VerificationFunction,
     VerificationOutcome,
     Verifier,
 )
-from aegis.core.receipt import ExecutionDisposition, verify_execution_receipt
+from aegis.core.receipt import ExecutionDisposition, ExecutionReceipt, verify_execution_receipt
 from aegis.core.transaction import ActionTransaction, TransactionState
 from aegis.domain.action import ActionRequest
 from aegis.domain.base import ActorRole
@@ -32,8 +34,60 @@ from aegis.domain.case import Case
 from aegis.domain.policy import RiskTier
 from aegis.domain.scope import ScopePolicy
 from aegis.evidence.audit import InMemoryAuditSink
+from aegis.evidence.sqlite_store import SQLiteEvidenceStore
 from aegis.evidence.store import InMemoryArtifactStore
 from aegis.policy.approval import Approval, ApprovalDecision
+
+
+def test_receipt_and_terminal_transaction_survive_reopen(
+    broker: ActionBroker, case: Case, scope_policy: ScopePolicy, now: datetime, tmp_path: Path
+) -> None:
+    path = tmp_path / "durable.sqlite3"
+    with SQLiteEvidenceStore(path) as store:
+        durable = ActionBroker(
+            registry=broker._registry, audit=store, artifacts=store, journal=store
+        )
+        request = _request(now)
+        tx, receipt, _ = ActionTransactionCoordinator(durable, receipts=store).execute(
+            request,
+            case=case,
+            scope=scope_policy,
+            now=now,
+            policy_version="scope-v1",
+            approval=_approval(request, now),
+            verifier=_verifier(True),
+        )
+        assert receipt is not None and tx.state is TransactionState.COMMITTED
+        store.put_receipt(receipt)
+    with SQLiteEvidenceStore(path, read_only=True) as reopened:
+        assert reopened.receipt_for_transaction(tx.id) == receipt
+        assert reopened.transaction_for_id(tx.id) == tx
+
+
+def test_receipt_sink_failure_does_not_retry_or_undo_committed_action(
+    broker: ActionBroker, case: Case, scope_policy: ScopePolicy, now: datetime
+) -> None:
+    class FailingSink:
+        def put_receipt(self, receipt: ExecutionReceipt) -> None:
+            raise OSError("synthetic storage failure")
+
+        def receipt_for_transaction(self, transaction_id: str) -> ExecutionReceipt | None:
+            return None
+
+    request = _request(now)
+    with pytest.raises(ReceiptPersistenceError, match=r"committed.*do not retry execution"):
+        ActionTransactionCoordinator(broker, receipts=FailingSink()).execute(
+            request,
+            case=case,
+            scope=scope_policy,
+            now=now,
+            policy_version="scope-v1",
+            approval=_approval(request, now),
+            verifier=_verifier(True),
+        )
+    adapter = broker._registry.get(request.adapter)
+    assert isinstance(adapter, MockAdapter) and len(adapter.calls) == 1
+    assert broker._transactions[request.id].state is TransactionState.COMMITTED
 
 
 @pytest.fixture
@@ -165,6 +219,35 @@ def test_object_verifier_protocol_is_used_with_trusted_check_timestamp(
 
     assert tx.state is TransactionState.COMMITTED
     assert verification is not None and verification.checked_at == now
+
+
+def test_adapter_exception_returns_control_failure_receipt_without_verifier(
+    broker: ActionBroker,
+    case: Case,
+    scope_policy: ScopePolicy,
+    now: datetime,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def crash(_self: MockAdapter, _request: ActionRequest, *, capability_ref: str) -> AdapterResult:
+        del capability_ref
+        raise RuntimeError("worker failed after possible effect")
+
+    monkeypatch.setattr(MockAdapter, "run", crash)
+    request = _request(now)
+    tx, receipt, verification = ActionTransactionCoordinator(broker).execute(
+        request,
+        case=case,
+        scope=scope_policy,
+        now=now,
+        policy_version="scope-v1",
+        approval=_approval(request, now),
+        verifier=_verifier(True),
+    )
+    assert tx.state is TransactionState.CONTROL_FAILURE
+    assert verification is None
+    assert receipt is not None
+    assert receipt.disposition is ExecutionDisposition.CONTROL_FAILURE
+    assert verify_execution_receipt(receipt)
 
 
 def test_approval_verified_action_commits_and_emits_audit_linked_receipt(

@@ -12,7 +12,7 @@ PROPOSE -> AUTHORIZE -> STAGE -> EXECUTE -> OBSERVE -> VERIFY
                                       └── failed   -> ROLLBACK / ESCALATE -> RECEIPT
 ```
 
-The current prototype has an immutable transaction record/state graph, an in-process one-use capability authority, broker lifecycle audit events, a verifier-driven commit/rollback coordinator, and audit-linked receipts. Per-case audit chains can be exported as stable JSONL and checked with `python scripts/verify_audit_stream.py <file>`; the export preserves integrity links but does not provide durable storage, writer authentication, or an external anchor. Two owned synthetic ranges (path traversal and object authorization) now pass deterministic brokered incident-to-recovery integration tests using stub proposals and oracle patches; these do not demonstrate live model repair. Their scenario-configured investigations combine brokered scan/log actions with route/source bindings and same-version provenance. The deployment adapter remains bound to one configured local fixture/service at a time and receives Docker control only as an adapter privilege—not as model access. The core also defines a domain-neutral `SandboxBackend` request/result protocol used by the one-shot analysis worker's Docker implementation; range lifecycle still uses its own bound Docker adapters and helper path. The protocol is substitutable plumbing, not an isolation guarantee. Capabilities and audit/artifact stores remain process-local/in-memory, with no signed grant or external audit anchor. This distinction is critical: **execution is not verification, and verification is not commit**. See ADR-036, ADR-038, and ADR-040–052.
+The current prototype has an immutable transaction record/state graph, an in-process one-use capability authority, broker lifecycle audit events, a verifier-driven commit/rollback coordinator, and audit-linked receipts. Per-case audit chains can be exported as stable JSONL and checked with `python scripts/verify_audit_stream.py <file>`; the export preserves integrity links but does not provide writer authentication or an external anchor. Raw audit events, artifacts, and append-only transaction snapshots can optionally persist in a local SQLite store. A restarted broker using that journal quarantines a mutation that reached execution without a recorded commit or rollback and reconstructs tool-call usage; the journal does not independently prove verification or reconcile the effect. Capability, approval, and other budget authority remains process-local. Two owned synthetic ranges (path traversal and object authorization) pass deterministic brokered incident-to-recovery integration tests using stub proposals and oracle patches; these do not demonstrate general live model repair. Their scenario-configured investigations combine brokered scan/log actions with route/source bindings and same-version provenance. The deployment adapter remains bound to one configured local fixture/service at a time and receives Docker control only as an adapter privilege—not as model access. The core also defines a domain-neutral `SandboxBackend` request/result protocol used by the one-shot analysis worker's Docker implementation; range lifecycle still uses its own bound Docker adapters and helper path. The protocol is substitutable plumbing, not an isolation guarantee. This distinction is critical: **execution is not verification, and verification is not commit**. See ADR-036, ADR-038, and ADR-040–055.
 
 The core runtime must not import the cyber defender. Future package extraction should be driven by dependency tests and use cases, not mechanical moves. The current `aegis.core` package is an initial foothold, not evidence that the repository is already cleanly split.
 
@@ -24,6 +24,12 @@ Aegis is two systems, not one:
 The second system is not an optional guardrail around the first. It is part of the product.
 
 ## Context
+
+ADR-057 preserves the live coordinator's registered rollback even with the
+transaction journal enabled. It must bind to the current `ROLLING_BACK` parent,
+same target/scope/policy, and original request ID. The exemption retains ordinary
+authorization checks and independent restoration verification; it cannot clear
+quarantine after a broker restart.
 
 ```mermaid
 flowchart TB
@@ -86,7 +92,7 @@ Controls cyber-range scenarios, attack replays, noisy background activity, hidde
 | Tool adapter | Converts typed request to a fixed command/API operation | Narrow trusted computing base |
 | Worker sandbox | Executes an adapter with quotas and isolation | Untrusted execution environment |
 | Evidence store | Stores normalized evidence and artifact references | Case data; agent may append only through APIs |
-| Audit sink | Append-only control and execution events | Current implementation is in-memory and hash-linked; not a durable/authenticated trusted service |
+| Audit sink | Append-only control and execution events | In-memory by default or opt-in SQLite, hash-linked but not an authenticated trusted service |
 | Clean-room verifier | Rebuilds and evaluates candidates independently | Separate Docker worker for patch checks; generic action-verifier callbacks are not yet isolated |
 | Assurance gate | Applies deterministic acceptance policy | High-integrity trusted service |
 | Approval service | Captures human identity, decision, expiry, and constraints | Trusted control component |

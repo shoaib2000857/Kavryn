@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from enum import StrEnum
-from typing import Annotated, Final, Literal
+from typing import Annotated, Final, Literal, Protocol
 
 from pydantic import Field
 
@@ -26,10 +26,20 @@ __all__ = [
     "EXECUTION_RECEIPT_SCHEMA_VERSION",
     "ExecutionDisposition",
     "ExecutionReceipt",
+    "ReceiptStore",
     "create_execution_receipt",
     "receipt_from_transaction",
     "verify_execution_receipt",
 ]
+
+
+class ReceiptStore(Protocol):
+    """Operator-owned durable receipt sink; persistence grants no authority."""
+
+    def put_receipt(self, receipt: ExecutionReceipt) -> None: ...
+
+    def receipt_for_transaction(self, transaction_id: str) -> ExecutionReceipt | None: ...
+
 
 EXECUTION_RECEIPT_SCHEMA_VERSION: Final[Literal["aegis.execution_receipt/v1"]] = (
     "aegis.execution_receipt/v1"

@@ -116,6 +116,7 @@ class ActionTransaction(AegisModel):
     id: RecordId
     case_id: CaseId
     action_request: ActionRequest
+    action_definition_digest: Digest | None = None
     scope_digest: Digest
     policy_version: Annotated[str, Field(min_length=1, max_length=128)]
     state: TransactionState = TransactionState.PROPOSED

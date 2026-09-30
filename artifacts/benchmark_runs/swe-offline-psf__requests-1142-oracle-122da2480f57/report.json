@@ -1,0 +1,59 @@
+{
+  "benchmark": "SWE-bench original: localized offline required-test pilot",
+  "official_full_harness_run": false,
+  "selection": [
+    "psf__requests-1142",
+    "psf__requests-1327",
+    "psf__requests-1339"
+  ],
+  "instance_id": "psf__requests-1142",
+  "variant": "oracle",
+  "dataset_revision": "e48e2bd1e9fecd5bbd641e9414ac59da9f2e69f6",
+  "harness_revision": "726c5461e2ef52d83cf1ea2107870a8bb3328d57",
+  "image_digest": "sha256:b2733e57feb4cfaeac24ab5ec496d4cb89a37db53bd0ca72eaededdb2ce19d1c",
+  "source_digest": {
+    "algorithm": "sha256",
+    "digest": "77f25d8b0db3f7c0001717b3221feb6ca731cb062faedf9d03bd76e4f24d0d5f"
+  },
+  "localization_assistance": {
+    "file": "requests/models.py",
+    "class": "PreparedRequest"
+  },
+  "model_requests": 0,
+  "usage": null,
+  "gold_and_hidden_tests_sent_to_model": false,
+  "network": "none",
+  "isolation": "rootless gVisor release-20260921.0; memory overlay; user systemd cgroups",
+  "required_tests": [
+    "test_requests.py::RequestsTestCase::test_no_content_length",
+    "test_requests.py::RequestsTestCase::test_basic_building",
+    "test_requests.py::RequestsTestCase::test_entry_points",
+    "test_requests.py::RequestsTestCase::test_invalid_url",
+    "test_requests.py::RequestsTestCase::test_params_are_added_before_fragment",
+    "test_requests.py::RequestsTestCase::test_path_is_not_double_encoded"
+  ],
+  "script_digest": "41f34b6b9ac877ca45469e473d746c9c399e0b1753e74f6de38ad1a1e7bd3388",
+  "log_digest": "d7fcb212a0917195ee69a4666144b35463e81a465cdc4671c6f5854d8bc60ff8",
+  "policy_outcome": "permitted",
+  "policy_reasons": [
+    "action_type, adapter, target, and budget all resolved within scope"
+  ],
+  "execution_status": "failure",
+  "duration_seconds": 0.16511522300061188,
+  "official_grader_report": {
+    "psf__requests-1142": {
+      "patch_is_None": false,
+      "patch_exists": true,
+      "patch_successfully_applied": false,
+      "resolved": false
+    }
+  },
+  "audit_valid": true,
+  "audit_head": "fcb472c7b5b7014b78ac35832f1f1dfbd4093720a723ace81601173699af226b",
+  "caveats": [
+    "Only official FAIL_TO_PASS/PASS_TO_PASS IDs executed, not full repository suite.",
+    "Model received a localized source class and public issue, not autonomous search.",
+    "Unpatched/oracle runs validate infrastructure; neither is a basic-agent baseline.",
+    "No full SWE-bench score or harness capability uplift can be inferred."
+  ]
+}

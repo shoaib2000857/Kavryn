@@ -3,6 +3,8 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Callable
 
+import pytest
+
 from aegis.investigation.correlation import CorrelationReport
 from aegis.orchestrator.actions import BrokeredDefenderActions
 from aegis.orchestrator.case_runner import CaseDependencies, run_case
@@ -206,6 +208,40 @@ def test_containment_effective_but_breaks_availability_triggers_rollback(
     trace = run_case("AGE-0001", deps)
     assert trace.halted
     assert any("broker rollback was verified" in note for note in trace.notes)
+
+
+@pytest.mark.parametrize("failure_stage", ("generation", "cross-case", "verification"))
+def test_failed_model_repair_halts_without_deployment_or_unverified_fallback(
+    happy_deps: CaseDependencies,
+    make_candidate: Callable[..., PatchCandidate],
+    failure_stage: str,
+) -> None:
+    verification_calls: list[str] = []
+
+    def generate() -> PatchCandidate:
+        if failure_stage == "generation":
+            raise RuntimeError("sensitive provider detail must not enter the trace")
+        candidate = make_candidate()
+        if failure_stage == "cross-case":
+            return candidate.model_copy(update={"case_id": "AGE-OTHER"})
+        return candidate
+
+    def verify(candidate: PatchCandidate) -> AssuranceOutcome:
+        verification_calls.append(candidate.id)
+        raise RuntimeError("sensitive verifier detail must not enter the trace")
+
+    trace = run_case(
+        "AGE-0001",
+        dataclasses.replace(happy_deps, generate_candidate=generate, verify_candidate=verify),
+    )
+    assert trace.halted
+    assert trace.final_state is (
+        CaseState.ESCALATED if failure_stage == "verification" else CaseState.REPAIR
+    )
+    assert bool(verification_calls) is (failure_stage == "verification")
+    assert CaseState.AWAIT_DEPLOY_APPROVAL not in trace.states
+    assert CaseState.RECOVER not in trace.states
+    assert all("sensitive" not in note for note in trace.notes)
 
 
 def test_repair_rejected_then_verified_on_retry_reaches_closed(

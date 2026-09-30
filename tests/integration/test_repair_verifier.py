@@ -12,6 +12,7 @@ patches fail."
 from __future__ import annotations
 
 import difflib
+import hashlib
 import shutil
 import subprocess
 import tempfile
@@ -106,7 +107,7 @@ def _candidate(diff: str, *, base_source_digest: Digest | None = None) -> PatchC
         base_repository="path-traversal-v1",
         base_source_digest=digest,
         diff=diff,
-        diff_digest=Digest(digest="b" * 64),
+        diff_digest=Digest(digest=hashlib.sha256(diff.encode()).hexdigest()),
         files_changed=changed_files(diff),
         root_cause="unsanitized path join allows traversal outside BASE_DIR",
         repair_invariant="resolved path must remain within BASE_DIR",

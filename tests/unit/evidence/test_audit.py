@@ -7,7 +7,7 @@ import pytest
 
 from aegis.domain.audit import AuditEvent, AuditEventType
 from aegis.domain.base import ActorRole, Digest
-from aegis.evidence.audit import AuditChainError, InMemoryAuditSink
+from aegis.evidence.audit import AuditChainError, InMemoryAuditSink, audit_event_digest
 
 
 def _event(now: datetime, **overrides: Any) -> AuditEvent:
@@ -20,11 +20,12 @@ def _event(now: datetime, **overrides: Any) -> AuditEvent:
         "role": ActorRole.OPERATOR,
         "subject_ref": "case://AGE-0001",
         "summary": "case created",
-        "integrity": Digest(digest="a" * 64),
+        "integrity": Digest(digest="0" * 64),
         "prev_event_digest": None,
     }
     defaults.update(overrides)
-    return AuditEvent(**defaults)
+    event = AuditEvent(**defaults)
+    return event.model_copy(update={"integrity": audit_event_digest(event)})
 
 
 def test_first_event_appends_with_no_predecessor(now: datetime) -> None:
@@ -45,7 +46,6 @@ def test_correctly_chained_second_event_appends(now: datetime) -> None:
         event_type=AuditEventType.ACTION_REQUESTED,
         subject_ref="action-request://AGE-0001/req-1",
         prev_event_digest=first.integrity,
-        integrity=Digest(digest="b" * 64),
     )
     sink.append(second)
     assert sink.events_for_case("AGE-0001") == (first, second)
@@ -79,6 +79,14 @@ def test_rejected_event_is_not_appended(now: datetime) -> None:
     with pytest.raises(AuditChainError):
         sink.append(forged)
     assert len(sink.events_for_case("AGE-0001")) == 1
+
+
+def test_event_with_tampered_content_is_rejected(now: datetime) -> None:
+    sink = InMemoryAuditSink()
+    event = _event(now)
+    with pytest.raises(AuditChainError, match="integrity"):
+        sink.append(event.model_copy(update={"summary": "forged"}))
+    assert sink.events_for_case("AGE-0001") == ()
 
 
 def test_events_are_isolated_per_case(now: datetime) -> None:

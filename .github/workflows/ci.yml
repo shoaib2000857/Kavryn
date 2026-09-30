@@ -50,6 +50,31 @@ jobs:
       - name: Check exported JSON Schemas
         run: uv run python scripts/export_schemas.py --check
 
+      - name: Build and inspect downloadable SDK distributions
+        run: |
+          uv build --out-dir dist
+          uv run python scripts/check_release.py dist
+
+      - name: Smoke-test installed wheel outside the checkout
+        shell: bash
+        run: |
+          KAVRYN_SMOKE_DIR="$(mktemp -d)"
+          uv venv --python 3.12 "$KAVRYN_SMOKE_DIR/venv"
+          uv pip install --python "$KAVRYN_SMOKE_DIR/venv/bin/python" dist/*.whl
+          cd "$KAVRYN_SMOKE_DIR"
+          "$KAVRYN_SMOKE_DIR/venv/bin/python" -I -c 'import kavryn; assert kavryn.verify_execution_receipt(kavryn.run_transaction_demo())'
+          "$KAVRYN_SMOKE_DIR/venv/bin/kavryn" --version
+          "$KAVRYN_SMOKE_DIR/venv/bin/kavryn" doctor
+          "$KAVRYN_SMOKE_DIR/venv/bin/kavryn" demo --fail-verification
+
+      - name: Upload checked SDK downloads
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: kavryn-sdk-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
   docker-integration:
     name: Synthetic Docker integration
     runs-on: ubuntu-24.04

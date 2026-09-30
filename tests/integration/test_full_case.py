@@ -58,7 +58,8 @@ from aegis.domain.scope import (
     Targets,
     ToolsPolicy,
 )
-from aegis.evidence.audit import InMemoryAuditSink
+from aegis.evidence.audit import InMemoryAuditSink, verify_audit_chain
+from aegis.evidence.sqlite_store import SQLiteEvidenceStore
 from aegis.evidence.store import InMemoryArtifactStore, sha256_digest
 from aegis.investigation.range import RangeEvidenceInvestigator, make_range_semgrep_adapter
 from aegis.orchestrator.actions import BrokeredDefenderActions
@@ -252,6 +253,7 @@ def _run_full_case(
     analysis_worker_image_id: str,
     *,
     provider: ReasoningProvider,
+    evidence_store: SQLiteEvidenceStore | None = None,
 ) -> None:
     base_url, rules_file = running_range
     diff = _diff_for(GOOD_APP_PY)
@@ -329,7 +331,7 @@ def _run_full_case(
     action_registry.register(
         ProxyLogsAdapter(container_name=PROXY_NAME, target_ref="service://demo-api-range")
     )
-    artifact_store = InMemoryArtifactStore()
+    artifact_store = evidence_store if evidence_store is not None else InMemoryArtifactStore()
     action_registry.register(
         make_range_semgrep_adapter(
             artifacts=artifact_store,
@@ -356,11 +358,12 @@ def _run_full_case(
             ),
         )
     )
-    audit_sink = InMemoryAuditSink()
+    audit_sink = evidence_store if evidence_store is not None else InMemoryAuditSink()
     broker = ActionBroker(
         registry=action_registry,
         audit=audit_sink,
         artifacts=artifact_store,
+        journal=evidence_store,
     )
 
     def approve_action(request: ActionRequest) -> Approval:
@@ -462,6 +465,39 @@ def test_full_case_reaches_closed_with_real_infrastructure(
         analysis_worker_image_id,
         provider=StubProvider(response=CONTAINMENT_PROPOSAL),
     )
+
+
+def test_full_case_persists_journal_and_audit_through_reopen(
+    running_range: tuple[str, str],
+    verifier_image_id: str,
+    original_app_image_id: str,
+    analysis_worker_image_id: str,
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "full-case-evidence.sqlite3"
+    with SQLiteEvidenceStore(path) as store:
+        _run_full_case(
+            running_range,
+            verifier_image_id,
+            original_app_image_id,
+            analysis_worker_image_id,
+            provider=StubProvider(response=CONTAINMENT_PROPOSAL),
+            evidence_store=store,
+        )
+        before_events = store.events_for_case("AGE-0001")
+        before_transactions = store.transactions_for_case("AGE-0001")
+        assert verify_audit_chain(before_events)
+        assert any(
+            tx.action_request.action_type == "deployment.rollout" for tx in before_transactions
+        )
+        assert all(
+            tx.state is TransactionState.COMMITTED
+            for tx in before_transactions
+            if tx.action_request.action_type in {"contain.rate_limit", "deployment.rollout"}
+        )
+    with SQLiteEvidenceStore(path) as reopened:
+        assert reopened.events_for_case("AGE-0001") == before_events
+        assert reopened.transactions_for_case("AGE-0001") == before_transactions
 
 
 @pytest.mark.skipif(
@@ -607,8 +643,20 @@ def test_brokered_range_containment_commits_after_independent_postcondition_chec
     ]
 
 
+@pytest.fixture(params=("memory", "sqlite"))
+def transaction_store(
+    request: pytest.FixtureRequest, tmp_path: Path
+) -> Iterator[SQLiteEvidenceStore | None]:
+    if request.param == "sqlite":
+        with SQLiteEvidenceStore(tmp_path / "transactions.sqlite3") as store:
+            yield store
+    else:
+        yield None
+
+
 def test_brokered_range_containment_rolls_back_when_benign_traffic_breaks(
     running_range: tuple[str, str],
+    transaction_store: SQLiteEvidenceStore | None,
 ) -> None:
     """A test-only overbroad rule must fail verification and restore prior behavior."""
     base_url, rules_file = running_range
@@ -699,8 +747,9 @@ def test_brokered_range_containment_rolls_back_when_benign_traffic_breaks(
     registry.register(OverbroadTestAdapter(rules_file))
     broker = ActionBroker(
         registry=registry,
-        audit=InMemoryAuditSink(),
-        artifacts=InMemoryArtifactStore(),
+        audit=transaction_store if transaction_store is not None else InMemoryAuditSink(),
+        artifacts=transaction_store if transaction_store is not None else InMemoryArtifactStore(),
+        journal=transaction_store,
     )
 
     def verify_bad_containment(
@@ -772,10 +821,16 @@ def test_brokered_range_containment_rolls_back_when_benign_traffic_breaks(
     assert tx.rollback_ref == f"transaction://{case_id}/{rollback.id}-rollback"
     assert send_get(base_url, "/download?filename=../secret.txt").status_code == 200
     assert send_get(base_url, "/download?filename=welcome.txt").status_code == 200
+    assert broker.unresolved_effects_for_case(case_id) == ()
+    if transaction_store is not None:
+        assert transaction_store.transaction_for_id(tx.id) == tx
+        assert verify_audit_chain(transaction_store.events_for_case(case_id))
 
 
 def test_brokered_deployment_rolls_back_when_runtime_attack_replay_still_succeeds(
-    running_range: tuple[str, str], original_app_image_id: str
+    running_range: tuple[str, str],
+    original_app_image_id: str,
+    transaction_store: SQLiteEvidenceStore | None,
 ) -> None:
     """A failed runtime postcondition restores the prior image and containment rule."""
     base_url, rules_file = running_range
@@ -836,8 +891,9 @@ def test_brokered_deployment_rolls_back_when_runtime_attack_replay_still_succeed
     )
     broker = ActionBroker(
         registry=registry,
-        audit=InMemoryAuditSink(),
-        artifacts=InMemoryArtifactStore(),
+        audit=transaction_store if transaction_store is not None else InMemoryAuditSink(),
+        artifacts=transaction_store if transaction_store is not None else InMemoryArtifactStore(),
+        journal=transaction_store,
     )
 
     def approve_action(request: ActionRequest) -> Approval:

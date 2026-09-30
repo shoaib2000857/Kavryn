@@ -1,0 +1,26 @@
+{
+  "comparison_version": "aegis.decision-ablation/v1",
+  "method": "identical-candidate counterfactual admission; no actual deployment",
+  "standard_benchmark": false,
+  "attempts": 2,
+  "infrastructure_errors": 0,
+  "parsed_candidates": 2,
+  "verified_candidates": 1,
+  "known_failed_candidates": 1,
+  "inconclusive_candidates": 0,
+  "ungated_baseline": {
+    "accepted": 2,
+    "known_false_accepts": 1
+  },
+  "aegis_gate": {
+    "accepted": 1,
+    "known_false_accepts": 0
+  },
+  "false_accept_reduction_percentage_points": 50.0,
+  "model_repair_quality_uplift": null,
+  "limitation": "Admission filtering changes acceptance, not generated patch quality. This is not a comparison to a test-aware CLI or an iterative agent; fixtures are small and verifier failures may reveal infrastructure errors requiring investigation.",
+  "run_ids": [
+    "run-f727fa94590743ea993952a805c53fd0",
+    "run-4773cd77b191470ebaa83877f4ee09da"
+  ]
+}

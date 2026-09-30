@@ -10,6 +10,7 @@ from aegis.core.actions import (
     ActionSideEffect,
     ActionValueType,
     VerificationContract,
+    action_definition_digest,
 )
 from aegis.domain.policy import RiskTier
 
@@ -117,3 +118,11 @@ def test_required_verification_requires_a_named_independent_verifier() -> None:
         VerificationContract(required=True)
     with pytest.raises(ValueError, match="exactly one verifier"):
         VerificationContract(required=False, verifier_id="range.verify")
+
+
+def test_action_definition_digest_binds_the_complete_contract() -> None:
+    original = _definition()
+    assert action_definition_digest(original) == action_definition_digest(_definition())
+    assert action_definition_digest(original) != action_definition_digest(
+        _definition(side_effects=(ActionSideEffect.READ,))
+    )

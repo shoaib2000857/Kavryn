@@ -1,0 +1,121 @@
+{
+  "agent_mode": "local_model_candidate_triage",
+  "benchmark": "Cyber Defense Benchmark public sample",
+  "dataset": "bundled sample only; not full benchmark",
+  "detector_id": "aegis_cdb_ollama_triage_v1",
+  "limitations": [
+    "One public sample, seed 176; not the full multi-seed benchmark.",
+    "Sample component evaluation, not a full Aegis autonomous hunt. Prediction mode: local_model_candidate_triage.",
+    "The upstream coverage metric does not penalize false positives; this is not precision.",
+    "The detector submitted at most 250 timestamps and used no SQL queries."
+  ],
+  "metric_source": "unmodified benchmark.scorer.score_hunt_file",
+  "predictions_sha256": "8914573de3e4910f912feee488dcb4011653b55476b5f6836171b2f32b6b99ee",
+  "sample_zip_sha256": "95fac13ce7169e02a58e6038be2b7855832c7b05df59702e70d8a64fc523e264",
+  "score": {
+    "cost_usd": 0.0,
+    "coverage_score_per_run": 0.03262071922786208,
+    "coverage_score_per_tactic": {
+      "TA0002": 0.03521825396825397,
+      "TA0003": 0.05714285714285714,
+      "TA0004": 0.06462585034013604,
+      "TA0005": 0.037698412698412696,
+      "TA0006": 0.0,
+      "TA0007": 0.05555555555555556,
+      "TA0009": 0.0,
+      "TA0010": 0.0,
+      "TA0011": 0.043345543345543344
+    },
+    "flags_pct_detected": 0.007157464212678937,
+    "model": "qwen2.5:7b",
+    "n_flags_detected": 28,
+    "n_flags_total": 3912,
+    "outcome": "terminated",
+    "per_step_ratio": {
+      "0:1": 0.0,
+      "0:2": 0.0,
+      "0:3": 0.0,
+      "0:4": 0.2857142857142857,
+      "1:1": 0.0,
+      "1:2": 0.0,
+      "1:3": 0.1111111111111111,
+      "1:5": 0.0,
+      "1:6": 0.0,
+      "2:1": 0.0,
+      "2:3": 0.0,
+      "2:4": 0.0,
+      "2:5": 0.16666666666666666,
+      "2:6": 0.0,
+      "2:7": 0.0,
+      "2:8": 0.0
+    },
+    "per_turn": [
+      {
+        "cumulative_submitted": 18,
+        "n_new_submitted": 18,
+        "queries_used": 0,
+        "turn": 1
+      },
+      {
+        "cumulative_submitted": 32,
+        "n_new_submitted": 14,
+        "queries_used": 0,
+        "turn": 2
+      },
+      {
+        "cumulative_submitted": 45,
+        "n_new_submitted": 13,
+        "queries_used": 0,
+        "turn": 3
+      },
+      {
+        "cumulative_submitted": 66,
+        "n_new_submitted": 21,
+        "queries_used": 0,
+        "turn": 4
+      },
+      {
+        "cumulative_submitted": 76,
+        "n_new_submitted": 10,
+        "queries_used": 0,
+        "turn": 5
+      },
+      {
+        "cumulative_submitted": 89,
+        "n_new_submitted": 13,
+        "queries_used": 0,
+        "turn": 6
+      },
+      {
+        "cumulative_submitted": 99,
+        "n_new_submitted": 10,
+        "queries_used": 0,
+        "turn": 7
+      },
+      {
+        "cumulative_submitted": 101,
+        "n_new_submitted": 2,
+        "queries_used": 0,
+        "turn": 8
+      },
+      {
+        "cumulative_submitted": 118,
+        "n_new_submitted": 17,
+        "queries_used": 0,
+        "turn": 9
+      },
+      {
+        "cumulative_submitted": 126,
+        "n_new_submitted": 8,
+        "queries_used": 0,
+        "turn": 10
+      }
+    ],
+    "provider": null,
+    "rollout": null,
+    "seed": 176,
+    "submitted_count": 126,
+    "turns": 10
+  },
+  "upstream_commit": "e8b86d01ccefe338d455e61505ca285943635b27"
+}

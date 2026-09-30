@@ -13,7 +13,8 @@ from aegis.verifier.checks import (
     check_security_rescan,
     check_source_integrity,
 )
-from aegis.verifier.models import CheckStatus
+from aegis.verifier.gate import evaluate_assurance
+from aegis.verifier.models import AssuranceOutcome, CheckStatus
 from aegis.workers.container import ContainerRunResult, ContainerRunSpec
 
 PASSING_JUNIT = """<?xml version="1.0"?>
@@ -68,6 +69,25 @@ def test_source_integrity_fails_on_mismatch(
     assert result.status is CheckStatus.FAIL
     assert result.check_id == "source_integrity"
     assert result.hard_failure is True
+
+
+def test_diff_digest_mismatch_is_control_failure(
+    make_candidate: Callable[..., PatchCandidate],
+) -> None:
+    candidate = make_candidate(diff_digest=Digest(digest="f" * 64))
+    result = check_diff_policy(candidate, allowed_files=frozenset({"app.py"}))
+    assert result.check_id == "diff_integrity" and result.status is CheckStatus.FAIL
+    assert evaluate_assurance((result,)) is AssuranceOutcome.CONTROL_FAILURE
+
+
+def test_independent_source_integrity_rejects_symlink(
+    tmp_path: Path,
+    make_candidate: Callable[..., PatchCandidate],
+) -> None:
+    (tmp_path / "app.py").symlink_to("/outside")
+    result = check_source_integrity(make_candidate(), trusted_source_dir=str(tmp_path))
+    assert result.status is CheckStatus.FAIL
+    assert evaluate_assurance((result,)) is AssuranceOutcome.CONTROL_FAILURE
 
 
 def test_diff_policy_check_passes_within_scope(

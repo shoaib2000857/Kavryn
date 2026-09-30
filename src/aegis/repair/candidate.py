@@ -71,13 +71,45 @@ def validate_diff_policy(
     if not files:
         raise DiffPolicyError("diff touches no recognizable files")
     for path in files:
-        if path.startswith("/") or ".." in path.split("/"):
+        if (
+            path.startswith("/")
+            or any(part in (".", "..", "") for part in path.split("/"))
+            or any(c in path for c in ("\\", "\0", "\r", '"'))
+        ):
             raise DiffPolicyError(f"diff touches an unsafe path: '{path}'")
         if path not in allowed_files:
             raise DiffPolicyError(f"diff touches a file outside the allowed set: '{path}'")
         lowered = path.lower()
         if any(fragment in lowered for fragment in forbidden_path_fragments):
             raise DiffPolicyError(f"diff touches a forbidden path fragment: '{path}'")
+    # Only modifications of existing, same-named source files are supported.
+    # A safe destination must not mask an unsafe source/rename/mode operation.
+    lines = diff.splitlines()
+    pairs: list[tuple[str, str]] = []
+    for i, line in enumerate(lines):
+        if line.startswith("+++ "):
+            if i == 0 or not lines[i - 1].startswith("--- a/") or not line.startswith("+++ b/"):
+                raise DiffPolicyError("patch requires paired a/ and b/ source headers")
+            old = lines[i - 1][6:].split("\t")[0].strip()
+            new = line[6:].split("\t")[0].strip()
+            if old != new:
+                raise DiffPolicyError("patch source and destination must match; renames denied")
+            pairs.append((old, new))
+        if line.startswith(
+            (
+                "rename from ",
+                "rename to ",
+                "old mode ",
+                "new mode ",
+                "new file mode ",
+                "deleted file mode ",
+                "GIT binary patch",
+                "Binary files ",
+            )
+        ):
+            raise DiffPolicyError("rename, mode, creation, deletion and binary patches unsupported")
+    if len(pairs) != len(set(pairs)):
+        raise DiffPolicyError("duplicate file sections are not supported")
     return files
 
 

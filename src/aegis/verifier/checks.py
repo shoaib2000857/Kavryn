@@ -11,6 +11,7 @@ verifier image and the real fixture are exercised in
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable
 
 from aegis.repair.candidate import DiffPolicyError, PatchCandidate, validate_diff_policy
@@ -43,7 +44,15 @@ def check_source_integrity(candidate: PatchCandidate, *, trusted_source_dir: str
     rejection (docs/EVIDENCE_AND_ASSURANCE.md: "evidence digest/
     signature mismatch").
     """
-    actual = hash_source_tree(trusted_source_dir)
+    try:
+        actual = hash_source_tree(trusted_source_dir)
+    except (OSError, ValueError):
+        return CheckResult(
+            check_id="source_integrity",
+            status=CheckStatus.FAIL,
+            hard_failure=True,
+            detail="trusted source snapshot contains unreadable or unsupported filesystem objects",
+        )
     if actual != candidate.base_source_digest:
         return CheckResult(
             check_id="source_integrity",
@@ -65,6 +74,13 @@ def check_source_integrity(candidate: PatchCandidate, *, trusted_source_dir: str
 def check_diff_policy(candidate: PatchCandidate, *, allowed_files: frozenset[str]) -> CheckResult:
     """Re-validate diff policy independently; never trust that the patch
     worker's own check actually ran (docs/DECISIONS.md ADR-009)."""
+    if hashlib.sha256(candidate.diff.encode()).hexdigest() != candidate.diff_digest.digest:
+        return CheckResult(
+            check_id="diff_integrity",
+            status=CheckStatus.FAIL,
+            hard_failure=True,
+            detail="candidate diff content differs from its declared digest",
+        )
     try:
         validate_diff_policy(candidate.diff, allowed_files=allowed_files)
     except DiffPolicyError as exc:

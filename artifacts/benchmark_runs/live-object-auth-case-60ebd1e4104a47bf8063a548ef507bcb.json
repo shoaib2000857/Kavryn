@@ -1,0 +1,404 @@
+{
+  "benchmark": "Aegis Layer-0 synthetic incident-to-recovery integration",
+  "not_a_standard_benchmark": true,
+  "scenario": "object-authorization-v1",
+  "model": "qwen38",
+  "started_at": "2026-09-30T14:11:22.693907+00:00",
+  "duration_seconds": 5.902,
+  "prepared_patch_used": false,
+  "approval_mode": "synthetic-test-operator",
+  "base_source_digest": {
+    "algorithm": "sha256",
+    "digest": "68b2ebce5da143b53f82406f02eef9eb2518660199769a5aeed805e14a6d4777"
+  },
+  "images": {
+    "app": "sha256:3c38cecdeb8cdc63cfd844cf466937792d59554f52673ffb2474fd72ae131f3d",
+    "proxy": "sha256:8ad4ebea359f67724f80c45565d9f1f8a6b4f65fc39ba96175bdaad5d7afb3b4",
+    "verifier": "sha256:671bca1ba96c42f51db3c05117efdd857463d63bbd03f591743497069ccc319f"
+  },
+  "trace": {
+    "states": [
+      "intake",
+      "scoped",
+      "observe",
+      "triage",
+      "investigate",
+      "contain_proposal",
+      "contain_proposal"
+    ],
+    "notes": [
+      "case intake",
+      "scope accepted",
+      "telemetry observed",
+      "triaged: exploit_reachable=True",
+      "evidence correlation started",
+      "investigated: 3 evidence-linked hypothesis(es)",
+      "provider failed to produce a containment proposal: HostedApiError: hosted API returned HTTP 404: b'The endpoint unaudited-enunciable-clinton.ngrok-free.dev is offline.\\r\\n\\r\\nERR_NGROK_3200\\r\\n' \u2014 HALTED: containment proposal failed (provider error)"
+    ],
+    "halted": true,
+    "halt_reason": "containment proposal failed (provider error)",
+    "final_state": "contain_proposal"
+  },
+  "candidates": [],
+  "verification": [],
+  "audit": [
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-edf26fab0b5e4039be5f69629638001f",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-scan-478b7c1b400a4b4499c1b6de676e27aa",
+      "summary": "proposed->policy_checked: deterministic policy evaluated",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "41f9922a91f20bbc48ae1f701896a2c515ea5ec522c1defd9acbe68aa634567d"
+      },
+      "prev_event_digest": null
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-f5f873e8bfae476aa4eb14bbffd0e048",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "action_requested",
+      "actor_id": "control:investigator",
+      "role": "control_plane",
+      "subject_ref": "action-request://AGE-0002/investigation-scan-478b7c1b400a4b4499c1b6de676e27aa",
+      "summary": "action_type=scan.run adapter=semgrep.scan",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "b7f4210dcad74f4b213cf605a3bbfd9bfba80d10b34bcd73139fe4cce88092e9"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "41f9922a91f20bbc48ae1f701896a2c515ea5ec522c1defd9acbe68aa634567d"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-38b4384dc73a4c56b1a9dc08898573a0",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "policy_decision_recorded",
+      "actor_id": "control-plane:policy-engine",
+      "role": "control_plane",
+      "subject_ref": "policy-decision://AGE-0002/investigation-decision-9dba3dd3acb04123a89f4f819bf92577",
+      "summary": "outcome=permitted risk_tier=r1_analyze",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "7cc1809de1bc2d19d97bf0043fc29eb0d7abc4b50b41aad05abf16e935e6dc12"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "b7f4210dcad74f4b213cf605a3bbfd9bfba80d10b34bcd73139fe4cce88092e9"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-85c5e43938d54d66945b5bf8d2b2cb12",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-scan-478b7c1b400a4b4499c1b6de676e27aa",
+      "summary": "policy_checked->authorized: scope policy permitted the action",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "e445acaaed310d83b3aa3979b667093162f3f6f81b5d197e1ea770489996391b"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "7cc1809de1bc2d19d97bf0043fc29eb0d7abc4b50b41aad05abf16e935e6dc12"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-e6f1e9f094e444489c2dc0be8a0b7f37",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-scan-478b7c1b400a4b4499c1b6de676e27aa",
+      "summary": "authorized->capability_issued: narrow one-use capability issued",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "9fc99c46a5a0dd2f24462d641c4173c640c6632de23f14b1bea37d5e8e3d839a"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "e445acaaed310d83b3aa3979b667093162f3f6f81b5d197e1ea770489996391b"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-4aac16f56b7b4b7aba363e9b45fbb303",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "capability_issued",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "capability://AGE-0002/investigation-decision-9dba3dd3acb04123a89f4f819bf92577",
+      "summary": "transaction_id=investigation-scan-478b7c1b400a4b4499c1b6de676e27aa action_type=scan.run adapter=semgrep.scan expires_at=2026-09-30T14:12:24.965515+00:00",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "f65a5a6aabb1b6b5a9b29884b2d9b84078650aa284caa12f09d3fd988798c91e"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "9fc99c46a5a0dd2f24462d641c4173c640c6632de23f14b1bea37d5e8e3d839a"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-e2b5c653dd50494a83cc8d93c3bf9231",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-scan-478b7c1b400a4b4499c1b6de676e27aa",
+      "summary": "capability_issued->executing: typed adapter execution started",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "3e2efaa28c2d27dd3a3914169f7eee2945c21b8cf2b82eb58e3d4a482a03c1a7"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "f65a5a6aabb1b6b5a9b29884b2d9b84078650aa284caa12f09d3fd988798c91e"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-aca306a0a42e44e4b2351807766234c5",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-scan-478b7c1b400a4b4499c1b6de676e27aa",
+      "summary": "executing->executed: adapter returned successfully; postconditions pending",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "6775edc1539f117cf6efc762796706fe32daed17a6e9046fb506e1af5f9e0fa1"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "3e2efaa28c2d27dd3a3914169f7eee2945c21b8cf2b82eb58e3d4a482a03c1a7"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-465a3123de044800bbf234d8d2b0389b",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "tool_run_recorded",
+      "actor_id": "worker:semgrep.scan",
+      "role": "worker",
+      "subject_ref": "tool-run://AGE-0002/investigation-scan-478b7c1b400a4b4499c1b6de676e27aa",
+      "summary": "adapter=semgrep.scan exit_status=success result_digest=sha256:06f5f418ae430f31ebb76aee0744612794c074d168c40fe65e616e57b4fe2af7",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "42d6f5b9109ff188b17de8cc23dde18739af8a3f544a11d4e55dbca97e427f54"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "6775edc1539f117cf6efc762796706fe32daed17a6e9046fb506e1af5f9e0fa1"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-3bdb97983c4749cbbea5d8edcb913667",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-telemetry-44f0fa20ed184c939172c4958ec9ef20",
+      "summary": "proposed->policy_checked: deterministic policy evaluated",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "4babf983d31c644bd12d39f54e3968d8859b323ad0318586aef3a48ce2a09988"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "42d6f5b9109ff188b17de8cc23dde18739af8a3f544a11d4e55dbca97e427f54"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-d37b73281a154c109822a7e5721c834c",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "action_requested",
+      "actor_id": "control:investigator",
+      "role": "control_plane",
+      "subject_ref": "action-request://AGE-0002/investigation-telemetry-44f0fa20ed184c939172c4958ec9ef20",
+      "summary": "action_type=telemetry.read adapter=range.proxy.logs",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "7c7c6fa45c4a3999adc7a1e8d1b9add18184b4c16de16d12f05531bbec044c14"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "4babf983d31c644bd12d39f54e3968d8859b323ad0318586aef3a48ce2a09988"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-1b5005bb7c484753b82fe6618183b27b",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "policy_decision_recorded",
+      "actor_id": "control-plane:policy-engine",
+      "role": "control_plane",
+      "subject_ref": "policy-decision://AGE-0002/telemetry-decision-5132c60f781f4b6ba6b2a63b4c747f7e",
+      "summary": "outcome=permitted risk_tier=r0_observe",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "df26744ca49aab41a3367bbf4160fdce13d9c608063e444ca567191775e00ce2"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "7c7c6fa45c4a3999adc7a1e8d1b9add18184b4c16de16d12f05531bbec044c14"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-724f74bb9ca34641a127085bc9701d51",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-telemetry-44f0fa20ed184c939172c4958ec9ef20",
+      "summary": "policy_checked->authorized: scope policy permitted the action",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "d980839a8c03af501c8468e2a6901fac080c0f61d2094f712d3eb080bb659651"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "df26744ca49aab41a3367bbf4160fdce13d9c608063e444ca567191775e00ce2"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-f7fbad89a89148ac9f34efa6fc5cc807",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-telemetry-44f0fa20ed184c939172c4958ec9ef20",
+      "summary": "authorized->capability_issued: narrow one-use capability issued",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "f25881929ef8e09dcb1631e9b97264c6bb7826adf249740019f5392a2974669e"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "d980839a8c03af501c8468e2a6901fac080c0f61d2094f712d3eb080bb659651"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-105501f84c78454aabeb8dbc591a6d8d",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "capability_issued",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "capability://AGE-0002/telemetry-decision-5132c60f781f4b6ba6b2a63b4c747f7e",
+      "summary": "transaction_id=investigation-telemetry-44f0fa20ed184c939172c4958ec9ef20 action_type=telemetry.read adapter=range.proxy.logs expires_at=2026-09-30T14:12:24.965515+00:00",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "b5820762f9702f2a5bc7ded91378780ac6c445561b43aa53ea66a392fcad68fe"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "f25881929ef8e09dcb1631e9b97264c6bb7826adf249740019f5392a2974669e"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-2306c82fb22e4df1b00134c90e54d5de",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-telemetry-44f0fa20ed184c939172c4958ec9ef20",
+      "summary": "capability_issued->executing: typed adapter execution started",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "9d216e8254dde3676e054d8a4d4106c6e819dca8ff67faa9d26b9eab10e32ebf"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "b5820762f9702f2a5bc7ded91378780ac6c445561b43aa53ea66a392fcad68fe"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-4864bcca099c4ef39eb21d16684c54e4",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "transaction_transition_recorded",
+      "actor_id": "control:action-broker",
+      "role": "control_plane",
+      "subject_ref": "transaction://AGE-0002/investigation-telemetry-44f0fa20ed184c939172c4958ec9ef20",
+      "summary": "executing->executed: adapter returned successfully; postconditions pending",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "ecdef917ae0fad138503d00732aa6df2b17da14940a6a3a8f47ece5aeac6a461"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "9d216e8254dde3676e054d8a4d4106c6e819dca8ff67faa9d26b9eab10e32ebf"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-e4507698c08a467a93434bd7ebbfef62",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "tool_run_recorded",
+      "actor_id": "worker:range.proxy.logs",
+      "role": "worker",
+      "subject_ref": "tool-run://AGE-0002/investigation-telemetry-44f0fa20ed184c939172c4958ec9ef20",
+      "summary": "adapter=range.proxy.logs exit_status=success result_digest=sha256:dd99f59dcd90a6daef134385bac3e317c4ab2b21806ff0e3563156e6a755f5b9",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "72c41ad1c5280bc3607d5de9d50c49e604821167aafdd64f1185b84356afc456"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "ecdef917ae0fad138503d00732aa6df2b17da14940a6a3a8f47ece5aeac6a461"
+      }
+    },
+    {
+      "schema_version": "aegis.audit_event/v1",
+      "id": "audit-AGE-0002-3c43d90bbc6a4006aca38fddeaf3ec8e",
+      "case_id": "AGE-0002",
+      "created_at": "2026-09-30T14:11:24.965515Z",
+      "event_type": "evidence_recorded",
+      "actor_id": "control:investigator",
+      "role": "control_plane",
+      "subject_ref": "artifact://AGE-0002/sha256/fe948cefe3236598f151a7172b8c582e3eda1e3d9814306c69d54645fc2aa8c5",
+      "summary": "content-addressed evidence stored: sha256:fe948cefe3236598f151a7172b8c582e3eda1e3d9814306c69d54645fc2aa8c5",
+      "integrity": {
+        "algorithm": "sha256",
+        "digest": "b419cb5c9f264a8198262d300098181d305e113f565741c0324f19bc59c108a9"
+      },
+      "prev_event_digest": {
+        "algorithm": "sha256",
+        "digest": "72c41ad1c5280bc3607d5de9d50c49e604821167aafdd64f1185b84356afc456"
+      }
+    }
+  ]
+}

@@ -91,6 +91,87 @@ def test_hosted_patch_provider_returns_hashed_in_scope_candidate() -> None:
     assert payload["max_tokens"] == 8192  # type: ignore[index]
 
 
+def test_structured_output_schema_is_opt_in_and_still_validated() -> None:
+    captured: list[dict[str, object]] = []
+
+    def fake_post(url: str, headers: dict[str, str], body: bytes, timeout: float) -> bytes:
+        captured.append(json.loads(body))
+        return _response(json.dumps({"updated_source": GOOD_SOURCE}))
+
+    for enabled in (False, True):
+        provider = HostedPatchProvider(
+            HostedProviderConfig(base_url="http://localhost:11434/v1", model="qwen2.5:7b"),
+            api_key="ollama",
+            http_post=fake_post,
+            structured_output=enabled,
+        )
+        with pytest.raises(PatchGenerationError):
+            provider.generate(_request())
+    assert captured[0]["response_format"] == {"type": "json_object"}
+    schema = captured[1]["response_format"]
+    assert isinstance(schema, dict)
+    assert schema["type"] == "json_schema"
+    assert schema["json_schema"]["schema"]["additionalProperties"] is False
+
+
+def test_public_syntax_retry_is_bounded_and_does_not_execute_code() -> None:
+    calls: list[dict[str, object]] = []
+
+    def fake_post(url: str, headers: dict[str, str], body: bytes, timeout: float) -> bytes:
+        calls.append(json.loads(body))
+        return _response(
+            json.dumps(
+                {
+                    "updated_source": "def broken(:\n" if len(calls) == 1 else GOOD_SOURCE,
+                    "root_cause": "Missing validation",
+                    "repair_invariant": "Stay beneath root",
+                }
+            )
+        )
+
+    provider = HostedPatchProvider(
+        HostedProviderConfig(base_url="http://localhost:11434/v1", model="local"),
+        api_key="ollama",
+        http_post=fake_post,
+        public_syntax_retry=True,
+    )
+    result = provider.generate_with_metadata(_request())
+    assert len(calls) == result.provider_requests == provider.last_request_count == 2
+    assert result.usage is None
+    messages = calls[1]["messages"]
+    assert isinstance(messages, list)
+    feedback = json.loads(messages[1]["content"])["public_feedback_is_untrusted_data"]
+    assert "Python syntax check failed" in feedback[0]
+    assert "hidden" not in feedback[0]
+
+
+def test_repeated_public_syntax_failure_stops_after_two_calls() -> None:
+    calls = 0
+
+    def fake_post(url: str, headers: dict[str, str], body: bytes, timeout: float) -> bytes:
+        nonlocal calls
+        calls += 1
+        return _response(
+            json.dumps(
+                {
+                    "updated_source": "def broken(:\n",
+                    "root_cause": "x",
+                    "repair_invariant": "y",
+                }
+            )
+        )
+
+    provider = HostedPatchProvider(
+        HostedProviderConfig(base_url="http://localhost:11434/v1", model="local"),
+        api_key="ollama",
+        http_post=fake_post,
+        public_syntax_retry=True,
+    )
+    with pytest.raises(PatchGenerationError, match="syntax"):
+        provider.generate(_request())
+    assert calls == provider.last_request_count == 2
+
+
 @pytest.mark.parametrize(
     "content",
     [
